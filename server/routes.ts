@@ -11,6 +11,13 @@ import { handlePerplexityChat } from "./perplexity";
 import { handleLocalChat } from "./localChatbot";
 import { handleEdenAIChat } from "./edenAI";
 
+// Extend Express Session to include user property
+declare module 'express-session' {
+  interface SessionData {
+    user?: any;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   setupAuth(app);
@@ -25,6 +32,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
     };
+
+  // Test login endpoint for development
+  app.post("/api/test-login", (req, res) => {
+    const { username, password } = req.body;
+    
+    if (username === 'test' && password === '123456') {
+      const testUser = {
+        id: 999,
+        username: 'test',
+        firstName: 'Test',
+        lastName: 'User',
+        email: 'test@test.com',
+        createdAt: new Date().toISOString()
+      };
+      
+      // Create a session manually
+      req.session.user = testUser;
+      res.json({ user: testUser });
+    } else {
+      res.status(401).json({ message: "Invalid test credentials. Use test/123456" });
+    }
+  });
 
   // Authentication routes
   app.post("/api/register", asyncHandler(async (req, res) => {
@@ -81,10 +110,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
-  app.get("/api/user", isAuthenticated, (req, res) => {
-    // Don't return password in response
-    const { password, ...userWithoutPassword } = req.user as any;
-    res.json(userWithoutPassword);
+  app.get("/api/user", (req, res) => {
+    // Check for test user session first
+    if (req.session?.user) {
+      res.json(req.session.user);
+    } else if (req.user) {
+      const { password, ...userWithoutPassword } = req.user as any;
+      res.json(userWithoutPassword);
+    } else {
+      res.status(401).json({ message: "Unauthorized" });
+    }
   });
 
   // Farm routes - protected with authentication

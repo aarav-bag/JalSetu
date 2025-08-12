@@ -10,6 +10,7 @@ import { handleChatRequest } from "./chatbot";
 import { handlePerplexityChat } from "./perplexity";
 import { handleLocalChat } from "./localChatbot";
 import { handleEdenAIChat } from "./edenAI";
+import { handleOpenAIChat } from "./openaiChatbot";
 
 // Extend Express Session to include user property
 declare module 'express-session' {
@@ -409,11 +410,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }));
 
-  // Chatbot API endpoint - using Eden AI with local fallback
+  // Chatbot API endpoint - with multiple AI provider support
   app.post("/api/chat", asyncHandler(async (req, res) => {
-    // Use Eden AI with built-in knowledge base as fallback
-    await handleEdenAIChat(req, res);
+    const { provider = "openai" } = req.body;
+    
+    try {
+      switch (provider.toLowerCase()) {
+        case "openai":
+        case "chatgpt":
+          await handleOpenAIChat(req, res);
+          break;
+        case "gemini":
+          await handleChatRequest(req, res);
+          break;
+        case "perplexity":
+          await handlePerplexityChat(req, res);
+          break;
+        case "eden":
+        case "edenai":
+          await handleEdenAIChat(req, res);
+          break;
+        case "local":
+          await handleLocalChat(req, res);
+          break;
+        default:
+          // Default to OpenAI if provider not specified or recognized
+          await handleOpenAIChat(req, res);
+      }
+    } catch (error) {
+      console.error(`Chat provider ${provider} failed:`, error);
+      // Fallback to local knowledge base
+      await handleLocalChat(req, res);
+    }
   }));
+
+  // Specific provider endpoints for direct access
+  app.post("/api/chat/openai", asyncHandler(handleOpenAIChat));
+  app.post("/api/chat/gemini", asyncHandler(handleChatRequest));
+  app.post("/api/chat/perplexity", asyncHandler(handlePerplexityChat));
+  app.post("/api/chat/eden", asyncHandler(handleEdenAIChat));
+  app.post("/api/chat/local", asyncHandler(handleLocalChat));
 
   const httpServer = createServer(app);
 

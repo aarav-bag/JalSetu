@@ -25,6 +25,7 @@ export default function HelpChatbot() {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [aiProvider, setAiProvider] = useState('openai');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -190,20 +191,64 @@ export default function HelpChatbot() {
     setInputValue('');
     setIsLoading(true);
     
-    // Simulate a short delay to make it feel natural
-    setTimeout(() => {
-      const response = getLocalResponse(userMessage.text);
+    try {
+      // Prepare conversation history for the API
+      const history = messages.map(msg => ({
+        sender: msg.sender,
+        text: msg.text
+      }));
+
+      // Call OpenAI ChatGPT API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage.text,
+          history: history,
+          provider: aiProvider
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
       
       const botMessage: Message = {
         id: Date.now().toString(),
-        text: response,
+        text: data.response || 'Sorry, I had trouble generating a response.',
         sender: 'bot',
         timestamp: new Date(),
       };
       
       setMessages(prev => [...prev, botMessage]);
+      
+    } catch (error) {
+      console.error('Chat API error:', error);
+      
+      // Fallback to local response if API fails
+      const fallbackResponse = getLocalResponse(userMessage.text);
+      
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        text: fallbackResponse,
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, botMessage]);
+      
+      toast({
+        title: "Connection Issue",
+        description: "Using offline responses. Check your internet connection.",
+        variant: "default",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleFaqClick = (question: string) => {
@@ -262,6 +307,24 @@ export default function HelpChatbot() {
           </Button>
         </div>
       </header>
+
+      {/* AI Provider Selector */}
+      <div className="px-6 mb-3">
+        <div className="flex items-center gap-2 mb-2">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">AI Assistant:</p>
+          <select 
+            value={aiProvider} 
+            onChange={(e) => setAiProvider(e.target.value)}
+            className="text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="openai">ChatGPT (OpenAI)</option>
+            <option value="gemini">Gemini</option>
+            <option value="perplexity">Perplexity</option>
+            <option value="eden">Eden AI</option>
+            <option value="local">Offline Mode</option>
+          </select>
+        </div>
+      </div>
 
       {/* FAQ Quick Access */}
       <div className="px-6 mb-4">

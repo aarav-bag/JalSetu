@@ -25,7 +25,7 @@ const SmartIrrigationTipCard = ({
         {t.irrigationTip}
       </h3>
       
-      <Card className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-[2rem] shadow-2xl overflow-hidden border-0 enhanced-card hover:shadow-3xl transition-all duration-500 hover:scale-[1.02]">
+      <Card className="bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 dark:from-amber-500 dark:via-orange-500 dark:to-amber-600 rounded-[2rem] shadow-2xl overflow-hidden border-0 enhanced-card hover:shadow-3xl transition-all duration-500 hover:scale-[1.02]">
         <CardContent className="p-6 relative">
           {/* Enhanced decorative elements */}
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-300/30 to-amber-300/20 rounded-full -mr-20 -mt-20 animate-pulse"></div>
@@ -50,18 +50,18 @@ const SmartIrrigationTipCard = ({
             
             <div className="flex-1">
               <div className="flex items-center mb-3">
-                <h4 className="font-bold text-white text-lg text-shadow">AI-Powered Suggestion</h4>
+                <h4 className="font-bold text-gray-800 dark:text-white text-lg">AI-Powered Suggestion</h4>
                 <div className="ml-2 flex-shrink-0 h-6 px-3 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center shadow-sm">
                   <Zap className="h-3 w-3 mr-1" />
                   SMART
                 </div>
               </div>
-              <p className="text-sm text-white/95 leading-relaxed mb-5">{displayTip}</p>
+              <p className="text-sm text-gray-700 dark:text-white/95 leading-relaxed mb-5">{displayTip}</p>
               
               <div className="flex flex-wrap gap-3">
                 <Button 
                   variant="outline" 
-                  className="rounded-2xl text-sm font-semibold bg-white/95 text-amber-700 border-0 shadow-lg hover:shadow-xl hover:bg-white hover:text-amber-800 transition-all duration-300 hover:scale-105 px-5 py-2.5"
+                  className="rounded-2xl text-sm font-semibold bg-white text-amber-700 border-0 shadow-lg hover:shadow-xl hover:bg-gray-50 hover:text-amber-800 transition-all duration-300 hover:scale-105 px-5 py-2.5"
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Apply suggestion
@@ -70,7 +70,7 @@ const SmartIrrigationTipCard = ({
                 <Link href={`/irrigation-tips/${farmId}`}>
                   <Button 
                     variant="outline" 
-                    className="rounded-2xl text-sm font-semibold text-white bg-amber-700/30 backdrop-blur-sm border border-white/30 shadow-lg hover:bg-white/20 hover:text-white transition-all duration-300 hover:scale-105 px-5 py-2.5"
+                    className="rounded-2xl text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-700/30 dark:backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 px-5 py-2.5"
                   >
                     {t.viewDetails}
                     <ArrowRight className="h-4 w-4 ml-2" />

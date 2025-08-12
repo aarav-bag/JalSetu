@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Droplet, TreePine, Waves, Sparkles, Eye, EyeOff, User, Lock, Heart } from 'lucide-react';
+import { Loader2, Droplet } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 const loginSchema = z.object({
@@ -20,7 +20,6 @@ export default function Login() {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
   const { login, loginIsPending } = useAuth();
-  const [showPassword, setShowPassword] = useState(false);
   
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),

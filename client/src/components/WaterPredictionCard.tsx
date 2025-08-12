@@ -82,9 +82,7 @@ const WaterPredictionCard = ({
           <div className="absolute -bottom-8 -left-6 opacity-8 floating" style={{ animationDelay: '0.8s' }}>
             <CloudSun className="h-20 w-20 text-amber-400" />
           </div>
-          <div className="absolute bottom-4 right-8 opacity-12">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 animate-pulse"></div>
-          </div>
+
           
           <div className="flex items-center relative z-10 mb-6">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center mr-5 shadow-lg pulse-effect">

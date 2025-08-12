@@ -49,31 +49,31 @@ const SmartIrrigationTipCard = ({
             </div>
             
             <div className="flex-1">
-              <div className="flex items-center">
+              <div className="flex items-center mb-3">
                 <h4 className="font-bold text-white text-lg text-shadow">AI-Powered Suggestion</h4>
-                <div className="ml-2 flex-shrink-0 h-5 px-2 rounded-full bg-amber-200 text-amber-800 text-[10px] font-bold flex items-center shadow-sm">
-                  <Zap className="h-2.5 w-2.5 mr-0.5" />
+                <div className="ml-2 flex-shrink-0 h-6 px-3 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center shadow-sm">
+                  <Zap className="h-3 w-3 mr-1" />
                   SMART
                 </div>
               </div>
-              <p className="text-sm text-white/90 mt-2 mb-4">{displayTip}</p>
+              <p className="text-sm text-white/95 leading-relaxed mb-5">{displayTip}</p>
               
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 <Button 
                   variant="outline" 
-                  className="rounded-full text-xs font-semibold bg-white text-amber-700 border-0 shadow-md hover:shadow-lg hover:bg-amber-50 hover:text-amber-800 transition-all"
+                  className="rounded-2xl text-sm font-semibold bg-white/95 text-amber-700 border-0 shadow-lg hover:shadow-xl hover:bg-white hover:text-amber-800 transition-all duration-300 hover:scale-105 px-5 py-2.5"
                 >
-                  <Check className="h-3.5 w-3.5 mr-1.5" />
+                  <Check className="h-4 w-4 mr-2" />
                   Apply suggestion
                 </Button>
                 
                 <Link href={`/irrigation-tips/${farmId}`}>
                   <Button 
                     variant="outline" 
-                    className="rounded-full text-xs font-semibold text-white bg-amber-600/30 backdrop-blur-sm border border-white/20 shadow-sm hover:bg-white/20 hover:text-white transition-all"
+                    className="rounded-2xl text-sm font-semibold text-white bg-amber-700/30 backdrop-blur-sm border border-white/30 shadow-lg hover:bg-white/20 hover:text-white transition-all duration-300 hover:scale-105 px-5 py-2.5"
                   >
                     {t.viewDetails}
-                    <ArrowRight className="h-3 w-3 ml-1.5" />
+                    <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </Link>
               </div>

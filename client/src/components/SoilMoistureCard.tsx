@@ -88,7 +88,7 @@ const SoilMoistureCard = ({
                 {/* Enhanced background gradient */}
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 dark:from-green-900/30 dark:via-emerald-900/20 dark:to-green-800/30 shadow-lg"></div>
                 
-                <svg className="w-[120px] h-[120px] transform -rotate-90 drop-shadow-md" viewBox="0 0 100 100">
+                <svg className="w-[140px] h-[140px] transform -rotate-90 drop-shadow-md" viewBox="0 0 100 100">
                   <circle 
                     className="text-gray-100 dark:text-gray-700" 
                     strokeWidth="8" 
@@ -113,10 +113,10 @@ const SoilMoistureCard = ({
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`text-3xl font-bold ${getMoistureColor(displayLevel)} text-shadow`}>
+                  <span className={`text-4xl font-bold ${getMoistureColor(displayLevel)} text-shadow`}>
                     {displayLevel}%
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">{t.soilMoisture.toUpperCase()}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold mt-2 tracking-wide">MOISTURE</span>
                 </div>
               </div>
               <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none">
@@ -146,10 +146,10 @@ const SoilMoistureCard = ({
                 ))}
               </div>
               
-              <div className="mt-4 text-right">
-                <Link href={`/soil-moisture/${farmId}`} className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-green-500 text-white text-sm font-medium transition-colors hover:bg-green-600 shadow-sm">
+              <div className="mt-6 text-right">
+                <Link href={`/soil-moisture/${farmId}`} className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-semibold transition-all duration-300 hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl hover:scale-105">
                   {t.viewDetails}
-                  <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                  <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
               </div>
             </div>

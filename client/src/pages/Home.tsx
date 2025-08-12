@@ -60,12 +60,26 @@ const Home = () => {
   const { user } = useAuth();
 
   return (
-    <div className="max-w-md mx-auto min-h-screen flex flex-col relative bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800 pb-20 transition-colors duration-300">
-      {/* Decorative top background pattern */}
-      <div className="absolute top-0 left-0 right-0 h-56 overflow-hidden z-0 opacity-40">
-        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-primary opacity-10 animate-pulse"></div>
-        <div className="absolute top-20 -left-10 w-36 h-36 rounded-full bg-secondary opacity-10 animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-0 right-1/4 w-24 h-24 rounded-full bg-accent opacity-10 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+    <div className="max-w-md mx-auto min-h-screen flex flex-col relative bg-gradient-to-br from-white via-blue-50/30 to-indigo-50 dark:from-gray-900 dark:via-blue-950/20 dark:to-gray-800 pb-20 transition-all duration-500">
+      {/* Enhanced Decorative Background Pattern */}
+      <div className="absolute inset-0 overflow-hidden z-0 opacity-60 dark:opacity-30">
+        {/* Animated gradient orbs */}
+        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-gradient-to-br from-primary/20 to-blue-400/10 animate-pulse floating"></div>
+        <div className="absolute top-32 -left-16 w-48 h-48 rounded-full bg-gradient-to-tr from-emerald-300/15 to-green-400/10 animate-pulse floating" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute top-10 right-1/3 w-32 h-32 rounded-full bg-gradient-to-bl from-amber-300/15 to-orange-400/10 animate-pulse floating" style={{ animationDelay: '0.8s' }}></div>
+        <div className="absolute bottom-1/3 -right-12 w-40 h-40 rounded-full bg-gradient-to-tl from-purple-300/10 to-pink-400/10 animate-pulse floating" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute bottom-20 -left-8 w-28 h-28 rounded-full bg-gradient-to-r from-cyan-300/15 to-blue-400/10 animate-pulse floating" style={{ animationDelay: '1.2s' }}></div>
+        
+        {/* Subtle grid pattern overlay */}
+        <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05]" 
+             style={{ 
+               backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(59, 130, 246, 0.3) 1px, transparent 0)',
+               backgroundSize: '24px 24px' 
+             }}></div>
+        
+        {/* Light rays effect */}
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-32 bg-gradient-to-b from-primary/20 to-transparent rotate-12 animate-pulse"></div>
+        <div className="absolute top-0 left-1/3 transform -translate-x-1/2 w-0.5 h-24 bg-gradient-to-b from-blue-400/15 to-transparent -rotate-12 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
       </div>
       
       <Header />

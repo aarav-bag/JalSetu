@@ -18,24 +18,28 @@ const SmartIrrigationTipCard = ({
   const displayTip = tip || "Based on your soil type and current moisture levels, water your crops early morning (5-7 AM) to minimize evaporation and maximize absorption.";
   return (
     <div className="mb-6">
-      <h3 className="text-lg font-bold mb-3 flex items-center gradient-text">
-        <div className="rounded-full bg-amber-100 p-1.5 mr-2 shadow-sm">
-          <Lightbulb className="h-4 w-4 text-amber-600" />
+      <h3 className="text-xl font-bold mb-4 flex items-center gradient-text">
+        <div className="rounded-2xl bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 p-2.5 mr-3 shadow-lg">
+          <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400" />
         </div>
         {t.irrigationTip}
       </h3>
       
-      <Card className="gradient-amber rounded-3xl shadow-lg overflow-hidden border-0 card-highlight enhanced-card">
-        <CardContent className="p-5 relative">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full -mr-10 -mt-10 opacity-20"></div>
-          <div className="absolute bottom-0 left-0 w-20 h-20 bg-yellow-200 rounded-full -ml-10 -mb-10 opacity-10"></div>
-          <div className="absolute top-5 right-5 opacity-20 floating" style={{ animationDelay: '0.5s' }}>
-            <Droplet className="h-12 w-12 text-amber-300" />
+      <Card className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-[2rem] shadow-2xl overflow-hidden border-0 enhanced-card hover:shadow-3xl transition-all duration-500 hover:scale-[1.02]">
+        <CardContent className="p-6 relative">
+          {/* Enhanced decorative elements */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-300/30 to-amber-300/20 rounded-full -mr-20 -mt-20 animate-pulse"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-orange-300/20 to-yellow-300/15 rounded-full -ml-16 -mb-16 animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute top-6 right-6 opacity-25 floating" style={{ animationDelay: '0.5s' }}>
+            <Droplet className="h-14 w-14 text-yellow-200" />
           </div>
-          <div className="absolute bottom-5 left-5 opacity-10 floating" style={{ animationDelay: '1.2s' }}>
-            <Clock className="h-10 w-10 text-amber-400" />
+          <div className="absolute bottom-6 left-6 opacity-15 floating" style={{ animationDelay: '1.2s' }}>
+            <Clock className="h-12 w-12 text-amber-200" />
           </div>
+          
+          {/* Sparkle effects */}
+          <div className="absolute top-8 left-1/3 w-2 h-2 bg-yellow-200/60 rounded-full animate-pulse" style={{ animationDelay: '0.8s' }}></div>
+          <div className="absolute bottom-10 right-1/4 w-1.5 h-1.5 bg-yellow-100/50 rounded-full animate-pulse" style={{ animationDelay: '1.5s' }}></div>
           
           <div className="flex relative z-10">
             <div className="mr-4 mt-1">

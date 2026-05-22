@@ -1,4 +1,4 @@
-import { Shrub, DropletIcon, ArrowRight, Sprout, Flower } from "lucide-react";
+import { Shrub, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
@@ -17,141 +17,115 @@ interface SoilMoistureCardProps {
   farmId?: number;
 }
 
-const SoilMoistureCard = ({ 
-  moistureLevel = 68, 
-  moistureStatus = "Ideal Moisture Level", 
+const SoilMoistureCard = ({
+  moistureLevel = 68,
+  moistureStatus = "Ideal Moisture Level",
   fieldReadings = [],
   farmId = 1
 }: SoilMoistureCardProps) => {
   const { t } = useLanguage();
-  // Ensure moistureLevel is not 0, default to 68 if it is
   const displayLevel = moistureLevel > 0 ? moistureLevel : 68;
-  
-  // Calculate the stroke-dashoffset based on the moisture level
-  const calculateOffset = (percent: number) => {
-    const circumference = 2 * Math.PI * 40;
-    return circumference - (percent / 100) * circumference;
+  const circumference = 2 * Math.PI * 36;
+  const offset = circumference - (displayLevel / 100) * circumference;
+
+  const getColor = (level: number) => {
+    if (level >= 60) return { stroke: "#10b981", text: "text-emerald-500", bg: "bg-emerald-500" };
+    if (level >= 40) return { stroke: "#f59e0b", text: "text-amber-500", bg: "bg-amber-500" };
+    return { stroke: "#ef4444", text: "text-red-500", bg: "bg-red-500" };
   };
 
-  const getStatusClass = (status: string) => {
+  const getFieldStatus = (status: string) => {
     switch (status) {
-      case "optimal":
-        return "bg-green-50 text-green-600 border-green-100";
-      case "warning":
-        return "bg-amber-50 text-amber-600 border-amber-200";
-      case "danger":
-        return "bg-red-50 text-red-600 border-red-200";
-      default:
-        return "bg-green-50 text-green-600 border-green-100";
+      case "optimal": return "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400";
+      case "warning": return "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400";
+      case "danger": return "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400";
+      default: return "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400";
     }
   };
 
-  const getMoistureColor = (level: number) => {
-    if (level >= 60) return "text-green-500";
-    if (level >= 40) return "text-amber-500";
-    return "text-red-500";
-  };
-
-  // Default field readings if none provided
-  const defaultFieldReadings: FieldReading[] = [
-    { id: 1, name: "Field 1", value: 68, status: "optimal" },
-    { id: 2, name: "Field 2", value: 45, status: "warning" }
+  const defaultReadings: FieldReading[] = [
+    { id: 1, name: "Field A", value: 68, status: "optimal" },
+    { id: 2, name: "Field B", value: 45, status: "warning" },
   ];
 
-  const readings = fieldReadings.length ? fieldReadings : defaultFieldReadings;
+  const readings = fieldReadings.length ? fieldReadings : defaultReadings;
+  const colors = getColor(displayLevel);
 
   return (
     <div className="mb-5">
-      <h3 className="text-xl font-bold mb-4 flex items-center gradient-text">
-        <div className="rounded-2xl bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 p-2.5 mr-3 shadow-lg">
-          <Shrub className="h-5 w-5 text-green-600 dark:text-green-400" />
-        </div>
-        {t.soilMoisture}
-      </h3>
-      
-      <Card className="glass-effect rounded-[2rem] shadow-2xl overflow-hidden border-0 enhanced-card hover:shadow-3xl transition-all duration-500 hover:scale-[1.02]">
-        <CardContent className="p-6 relative">
-          {/* Enhanced decorative elements */}
-          <div className="absolute -bottom-8 -left-8 opacity-8">
-            <Sprout className="h-24 w-24 text-green-500" />
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <div className="h-7 w-7 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+            <Shrub className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="absolute top-4 right-4 opacity-15">
-            <Flower className="h-12 w-12 text-green-500 floating" />
-          </div>
-          <div className="absolute bottom-4 right-6 opacity-10">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-400 animate-pulse"></div>
-          </div>
-          
-          <div className="flex items-center">
-            <div className="relative">
-              <div className="w-[140px] h-[140px] relative flex items-center justify-center">
-                {/* Enhanced background gradient */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 dark:from-green-900/30 dark:via-emerald-900/20 dark:to-green-800/30 shadow-lg"></div>
-                
-                <svg className="w-[140px] h-[140px] transform -rotate-90 drop-shadow-md" viewBox="0 0 100 100">
-                  <circle 
-                    className="text-gray-100 dark:text-gray-700" 
-                    strokeWidth="8" 
-                    stroke="currentColor" 
-                    fill="transparent" 
-                    r="40" 
-                    cx="50" 
-                    cy="50"
-                  />
-                  <circle 
-                    className={`${getMoistureColor(displayLevel)}`}
-                    strokeWidth="10" 
-                    strokeLinecap="round" 
-                    stroke="currentColor" 
-                    fill="transparent" 
-                    r="40" 
-                    cx="50" 
-                    cy="50"
-                    strokeDasharray="251.2"
-                    strokeDashoffset={calculateOffset(displayLevel)}
-                    filter="drop-shadow(0 1px 2px rgb(0 0 0 / 0.1))"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`text-4xl font-bold ${getMoistureColor(displayLevel)} text-shadow`}>
-                    {displayLevel}%
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold mt-2 tracking-wide">MOISTURE</span>
-                </div>
-              </div>
-              <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none">
-                <div className="absolute -right-2 top-1/4 opacity-30">
-                  <DropletIcon className={`h-6 w-6 ${getMoistureColor(displayLevel)} floating`} style={{ animationDelay: '0.5s' }} />
-                </div>
-                <div className="absolute -left-2 bottom-1/4 opacity-20">
-                  <DropletIcon className={`h-10 w-10 ${getMoistureColor(displayLevel)} floating`} style={{ animationDelay: '1s' }} />
-                </div>
+          {t.soilMoisture}
+        </h3>
+        <Link href={`/soil-moisture/${farmId}`} className="text-xs font-semibold text-blue-500 dark:text-blue-400 flex items-center gap-1 hover:gap-2 transition-all">
+          View all <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+
+      <Card className="rounded-[1.5rem] border-0 shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-5">
+            {/* Circular gauge */}
+            <div className="relative flex-shrink-0 w-28 h-28">
+              <svg className="w-28 h-28 -rotate-90" viewBox="0 0 88 88">
+                <circle
+                  cx="44" cy="44" r="36"
+                  stroke="#e5e7eb" strokeWidth="7" fill="none"
+                  className="dark:stroke-gray-700"
+                />
+                <circle
+                  cx="44" cy="44" r="36"
+                  stroke={colors.stroke} strokeWidth="7" fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  style={{ transition: 'stroke-dashoffset 1s ease' }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-2xl font-bold ${colors.text} leading-none`}>{displayLevel}%</span>
+                <span className="text-[9px] text-gray-400 dark:text-gray-500 font-semibold mt-1 tracking-wider uppercase">moisture</span>
               </div>
             </div>
-            
-            <div className="flex-1 ml-5">
-              <h4 className="font-bold text-gray-800 dark:text-gray-200 text-lg">{moistureStatus}</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {"Current soil moisture is optimal for your crops."}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {readings.map((field, index) => (
-                  <span 
+
+            {/* Right info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-800 dark:text-white mb-1 truncate">{moistureStatus}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">Current levels are within the recommended range for optimal crop growth.</p>
+
+              {/* Field pills */}
+              <div className="flex flex-wrap gap-1.5">
+                {readings.map((field) => (
+                  <span
                     key={field.id}
-                    className={`px-3 py-1.5 rounded-full text-xs border ${getStatusClass(field.status)} font-medium shadow-sm`}
-                    style={{ animationDelay: `${index * 0.15}s` }}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold ${getFieldStatus(field.status)}`}
                   >
                     {field.name}: {field.value}%
                   </span>
                 ))}
               </div>
-              
-              <div className="mt-6 text-right">
-                <Link href={`/soil-moisture/${farmId}`} className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-semibold transition-all duration-300 hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl hover:scale-105">
-                  {t.viewDetails}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Link>
-              </div>
+            </div>
+          </div>
+
+          {/* Progress bar strip */}
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Moisture level</span>
+              <span className={`text-xs font-bold ${colors.text}`}>{displayLevel}%</span>
+            </div>
+            <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${colors.bg} transition-all duration-1000`}
+                style={{ width: `${displayLevel}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-[10px] text-gray-400">Dry</span>
+              <span className="text-[10px] text-gray-400">Optimal 60–80%</span>
+              <span className="text-[10px] text-gray-400">Wet</span>
             </div>
           </div>
         </CardContent>

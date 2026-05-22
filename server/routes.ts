@@ -39,13 +39,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/test-login", (req, res) => {
     const { username, password } = req.body;
     
-    if (username === 'test' && password === '123456') {
+    if (username === 'aarav' && password === '123456') {
       const testUser = {
         id: 999,
-        username: 'test',
-        firstName: 'Test',
-        lastName: 'User',
-        email: 'test@test.com',
+        username: 'aarav',
+        firstName: 'Aarav',
+        lastName: 'Sharma',
+        email: 'aarav@jalsetu.app',
         createdAt: new Date().toISOString()
       };
       
@@ -53,7 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.user = testUser;
       res.json({ user: testUser });
     } else {
-      res.status(401).json({ message: "Invalid test credentials. Use test/123456" });
+      res.status(401).json({ message: "Invalid credentials. Use aarav/123456" });
     }
   });
 

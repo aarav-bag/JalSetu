@@ -29,13 +29,13 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       // Test user for development - check first before any database calls
-      if (username === 'test' && password === '123456') {
+      if (username === 'aarav' && password === '123456') {
         const testUser = {
           id: 999,
-          username: 'test',
-          firstName: 'Test',
-          lastName: 'User',
-          email: 'test@test.com',
+          username: 'aarav',
+          firstName: 'Aarav',
+          lastName: 'Sharma',
+          email: 'aarav@jalsetu.app',
           password: 'hashed_password',
           createdAt: new Date().toISOString()
         };
@@ -61,7 +61,7 @@ export function setupAuth(app: Express) {
         // Authentication successful
         return done(null, user);
       } catch (error) {
-        return done(null, false, { message: 'Database connection error. Use test/123456 for development.' });
+        return done(null, false, { message: 'Database connection error. Use aarav/123456 for development.' });
       }
     })
   );
@@ -78,10 +78,10 @@ export function setupAuth(app: Express) {
       if (id === 999) {
         const testUser = {
           id: 999,
-          username: 'test',
-          firstName: 'Test',
-          lastName: 'User',
-          email: 'test@test.com',
+          username: 'aarav',
+          firstName: 'Aarav',
+          lastName: 'Sharma',
+          email: 'aarav@jalsetu.app',
           password: 'hashed_password',
           createdAt: new Date().toISOString()
         };
@@ -95,10 +95,10 @@ export function setupAuth(app: Express) {
       if (id === 999) {
         const testUser = {
           id: 999,
-          username: 'test',
-          firstName: 'Test',
-          lastName: 'User',
-          email: 'test@test.com',
+          username: 'aarav',
+          firstName: 'Aarav',
+          lastName: 'Sharma',
+          email: 'aarav@jalsetu.app',
           password: 'hashed_password',
           createdAt: new Date().toISOString()
         };

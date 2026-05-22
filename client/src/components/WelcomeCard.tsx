@@ -1,4 +1,4 @@
-import { Leaf, Sun, CloudRain, Cloud, TrendingUp, Droplets } from "lucide-react";
+import { Leaf, Sun, CloudRain, Cloud, TrendingUp, Droplets, Moon, Sunset } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface WelcomeCardProps {
@@ -6,10 +6,25 @@ interface WelcomeCardProps {
   farmStatus: string;
 }
 
+const getTimeOfDay = () => {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 12) return "morning";
+  if (h >= 12 && h < 17) return "afternoon";
+  if (h >= 17 && h < 20) return "evening";
+  return "night";
+};
+
+const greetingMap = {
+  morning:   { text: "Good morning",   emoji: "🌅" },
+  afternoon: { text: "Good afternoon", emoji: "☀️" },
+  evening:   { text: "Good evening",   emoji: "🌇" },
+  night:     { text: "Good night",     emoji: "🌙" },
+};
+
 const WelcomeCard = ({ farmerName, farmStatus }: WelcomeCardProps) => {
   const { language } = useLanguage();
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const tod = getTimeOfDay();
+  const { text: greeting } = greetingMap[tod];
 
   const date = new Date();
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
@@ -18,12 +33,16 @@ const WelcomeCard = ({ farmerName, farmStatus }: WelcomeCardProps) => {
     options
   );
 
-  const WeatherIcon = hour < 12 ? Sun : hour < 18 ? Cloud : CloudRain;
+  const WeatherIcon =
+    tod === "morning"   ? Sun :
+    tod === "afternoon" ? Cloud :
+    tod === "evening"   ? Sunset :
+    Moon;
 
   const quickStats = [
     { label: 'Farm Health', value: '94%', icon: TrendingUp, color: 'text-emerald-600 dark:text-emerald-300' },
-    { label: 'Water Level', value: '78%', icon: Droplets, color: 'text-blue-600 dark:text-cyan-300' },
-    { label: 'Crop Stage', value: 'Grow', icon: Leaf, color: 'text-green-600 dark:text-green-300' },
+    { label: 'Water Level', value: '78%', icon: Droplets,   color: 'text-blue-600 dark:text-cyan-300' },
+    { label: 'Crop Stage',  value: 'Grow', icon: Leaf,       color: 'text-green-600 dark:text-green-300' },
   ];
 
   return (
@@ -38,11 +57,15 @@ const WelcomeCard = ({ farmerName, farmStatus }: WelcomeCardProps) => {
           <div className="flex items-start justify-between mb-5">
             <div>
               <p className="text-sm font-medium text-gray-700 dark:text-white/60 mb-1">{greeting}</p>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{farmerName}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{farmerName} 👋</h2>
               <p className="text-xs text-gray-500 dark:text-white/40 mt-1">{formattedDate}</p>
             </div>
             <div className="h-14 w-14 rounded-2xl glass-tile flex items-center justify-center">
-              <WeatherIcon className="h-7 w-7 text-blue-600 dark:text-white" />
+              <WeatherIcon className={`h-7 w-7 ${
+                tod === "night" ? "text-indigo-500 dark:text-indigo-300" :
+                tod === "evening" ? "text-orange-500 dark:text-orange-300" :
+                "text-blue-600 dark:text-white"
+              }`} />
             </div>
           </div>
 

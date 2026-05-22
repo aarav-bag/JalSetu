@@ -32,7 +32,11 @@ const Header = () => {
   };
 
   const hour = time.getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const greeting =
+    hour >= 5  && hour < 12 ? "Good morning" :
+    hour >= 12 && hour < 17 ? "Good afternoon" :
+    hour >= 17 && hour < 20 ? "Good evening" :
+    "Good night";
   const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const dateStr = time.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 

@@ -155,7 +155,7 @@ export default function Login() {
             <div className="flex gap-4">
               <div>
                 <p className="text-xs text-gray-500">Username</p>
-                <p className="text-sm text-gray-300 font-mono">test</p>
+                <p className="text-sm text-gray-300 font-mono">aarav</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Password</p>

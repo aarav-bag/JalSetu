@@ -27,9 +27,7 @@ const Header = () => {
 
   const handleLogout = () => {
     logout(undefined, {
-      onSuccess: () => {
-        toast({ title: "Logged out", description: "See you soon!" });
-      }
+      onSuccess: () => toast({ title: "Logged out", description: "See you soon!" })
     });
   };
 
@@ -41,69 +39,62 @@ const Header = () => {
   return (
     <header className="px-5 pt-10 pb-4 relative z-10">
       <div className="flex items-center justify-between">
-        {/* Logo + greeting */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-md">
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30">
               <Droplets className="h-4 w-4 text-white" />
             </div>
             <span className="text-xl font-bold tracking-tight">
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300">Jal</span>
-              <span className="text-gray-800 dark:text-white">Setu</span>
+              <span className="text-white/90">Jal</span>
+              <span className="text-cyan-300 font-black">Setu</span>
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{greeting} — {dateStr}</p>
-            <span className="text-xs font-mono text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">{timeStr}</span>
+            <p className="text-xs text-white/50 font-medium">{greeting} — {dateStr}</p>
+            <span className="text-xs font-mono text-cyan-300/80 bg-white/10 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/10">{timeStr}</span>
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2 ml-3">
-          {/* Notifications */}
-          <button className="relative h-10 w-10 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center transition-all duration-200 hover:scale-105 hover:shadow-md">
-            <Bell className="h-4.5 w-4.5 text-gray-600 dark:text-gray-300" />
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
+          <button className="relative h-10 w-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:bg-white/20 hover:scale-105 shadow-lg">
+            <Bell className="h-4 w-4 text-white/80" />
+            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-400 ring-2 ring-slate-900/50"></span>
           </button>
 
-          {/* Dark mode toggle */}
           <button
             onClick={() => {
               toggleDarkMode();
               toast({ title: darkMode ? "Light mode" : "Dark mode", description: "Display preference updated" });
             }}
-            className="h-10 w-10 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center transition-all duration-200 hover:scale-105 hover:shadow-md"
+            className="h-10 w-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-200 hover:bg-white/20 hover:scale-105 shadow-lg"
           >
-            {darkMode ? (
-              <Sun className="h-4.5 w-4.5 text-amber-400" />
-            ) : (
-              <Moon className="h-4.5 w-4.5 text-gray-600" />
-            )}
+            {darkMode
+              ? <Sun className="h-4 w-4 text-amber-300" />
+              : <Moon className="h-4 w-4 text-white/80" />}
           </button>
 
-          {/* User avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="h-10 w-10 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer">
+              <button className="h-10 w-10 rounded-2xl bg-gradient-to-br from-blue-400/80 to-cyan-400/80 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-lg shadow-blue-500/20 transition-all duration-200 hover:scale-105 cursor-pointer">
                 <span className="text-white text-sm font-bold">
                   {(user?.firstName?.[0] || user?.username?.[0] || 'U').toUpperCase()}
                 </span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 rounded-2xl border-gray-100 dark:border-gray-700 shadow-xl">
+            <DropdownMenuContent align="end" className="w-52 rounded-2xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-2xl">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col">
                   <span className="font-semibold text-gray-900 dark:text-white">{user?.firstName || user?.username}</span>
                   <span className="text-xs text-gray-500">@{user?.username}</span>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-white/20" />
               <DropdownMenuItem onClick={() => window.location.href = '/settings'} className="rounded-xl">
                 <User className="mr-2 h-4 w-4" />
                 Profile & Settings
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} disabled={logoutIsPending} className="rounded-xl text-red-600 dark:text-red-400 focus:text-red-600">
+              <DropdownMenuSeparator className="bg-white/20" />
+              <DropdownMenuItem onClick={handleLogout} disabled={logoutIsPending} className="rounded-xl text-red-500 dark:text-red-400 focus:text-red-500">
                 <LogOut className="mr-2 h-4 w-4" />
                 {logoutIsPending ? 'Logging out...' : 'Log out'}
               </DropdownMenuItem>

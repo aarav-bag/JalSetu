@@ -18,11 +18,11 @@ interface FarmData {
 }
 
 const SkeletonCard = ({ height = "h-40" }: { height?: string }) => (
-  <div className={`${height} bg-white dark:bg-gray-900 animate-pulse rounded-[1.5rem] shadow-sm`}>
+  <div className={`${height} glass-card animate-pulse rounded-[1.5rem]`}>
     <div className="p-5 space-y-3">
-      <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-1/3"></div>
-      <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-2/3"></div>
-      <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-1/2"></div>
+      <div className="h-3 bg-white/30 dark:bg-white/10 rounded-full w-1/3"></div>
+      <div className="h-3 bg-white/30 dark:bg-white/10 rounded-full w-2/3"></div>
+      <div className="h-3 bg-white/30 dark:bg-white/10 rounded-full w-1/2"></div>
     </div>
   </div>
 );
@@ -32,7 +32,18 @@ const Home = () => {
   const { user } = useAuth();
 
   return (
-    <div className="max-w-md mx-auto min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+    <div className="max-w-md mx-auto min-h-screen flex flex-col relative overflow-hidden transition-colors duration-300">
+
+      {/* === Rich gradient background === */}
+      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 dark:from-gray-950 dark:via-blue-950 dark:to-slate-950"></div>
+
+      {/* Glowing colour orbs */}
+      <div className="fixed -z-10 top-[-80px] left-[-60px] w-72 h-72 rounded-full bg-blue-500/25 blur-[80px]"></div>
+      <div className="fixed -z-10 top-[30%] right-[-80px] w-64 h-64 rounded-full bg-cyan-400/20 blur-[70px]"></div>
+      <div className="fixed -z-10 top-[55%] left-[-40px] w-56 h-56 rounded-full bg-emerald-500/15 blur-[70px]"></div>
+      <div className="fixed -z-10 bottom-[-60px] right-[20%] w-72 h-72 rounded-full bg-indigo-500/20 blur-[80px]"></div>
+      <div className="fixed -z-10 bottom-[25%] left-[30%] w-48 h-48 rounded-full bg-purple-500/15 blur-[60px]"></div>
+
       <Header />
 
       <main className="flex-1 px-4 pt-1 pb-4 overflow-y-auto">
@@ -61,9 +72,6 @@ const Home = () => {
               farmId={farmData?.farm?.id}
             />
             <WaterPredictionCard
-              prediction={farmData?.waterPrediction?.message || ""}
-              advice={farmData?.waterPrediction?.advice || ""}
-              forecast={farmData?.waterPrediction?.forecast || []}
               farmId={farmData?.farm?.id}
             />
             <SmartIrrigationTipCard

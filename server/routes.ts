@@ -11,6 +11,7 @@ import { handlePerplexityChat } from "./perplexity";
 import { handleLocalChat } from "./localChatbot";
 import { handleEdenAIChat } from "./edenAI";
 import { handleOpenAIChat } from "./openaiChatbot";
+import { fetchRealWeather, fetchDefaultWeather } from "./weather";
 
 // Extend Express Session to include user property
 declare module 'express-session' {
@@ -408,6 +409,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         irrigationTip
       }
     });
+  }));
+
+  // Real weather endpoint using Open-Meteo (free, no API key)
+  app.get("/api/weather", asyncHandler(async (req, res) => {
+    const lat = parseFloat(req.query.lat as string);
+    const lon = parseFloat(req.query.lon as string);
+
+    try {
+      const weather = (!isNaN(lat) && !isNaN(lon))
+        ? await fetchRealWeather(lat, lon)
+        : await fetchDefaultWeather();
+      res.json(weather);
+    } catch (err) {
+      console.error("Weather fetch failed:", err);
+      res.status(500).json({ error: "Failed to fetch weather data" });
+    }
   }));
 
   // Chatbot API endpoint - with multiple AI provider support

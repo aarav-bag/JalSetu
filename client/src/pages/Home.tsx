@@ -4,6 +4,7 @@ import WaterQualityCard from "@/components/WaterQualityCard";
 import SoilMoistureCard from "@/components/SoilMoistureCard";
 import WaterPredictionCard from "@/components/WaterPredictionCard";
 import SmartIrrigationTipCard from "@/components/SmartIrrigationTipCard";
+import RecommendationsCard from "@/components/RecommendationsCard";
 import BottomNavigation from "@/components/BottomNavigation";
 import PageShell from "@/components/PageShell";
 import { useQuery } from "@tanstack/react-query";
@@ -61,6 +62,7 @@ const Home = () => {
               farmId={farmData?.farm?.id}
             />
             <WaterPredictionCard farmId={farmData?.farm?.id} />
+            <RecommendationsCard farmId={farmData?.farm?.id || 1} />
             <SmartIrrigationTipCard
               tip={farmData?.irrigationTip || "Based on soil moisture and weather forecast, consider watering your crops tomorrow morning for optimal growth."}
               farmId={farmData?.farm?.id}

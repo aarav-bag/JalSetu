@@ -12,6 +12,7 @@ import { handleLocalChat } from "./localChatbot";
 import { handleEdenAIChat } from "./edenAI";
 import { handleOpenAIChat } from "./openaiChatbot";
 import { fetchRealWeather, fetchDefaultWeather } from "./weather";
+import { generateRecommendations } from "./recommendations";
 
 // Extend Express Session to include user property
 declare module 'express-session' {
@@ -425,6 +426,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Weather fetch failed:", err);
       res.status(500).json({ error: "Failed to fetch weather data" });
     }
+  }));
+
+  // ── Smart AI Recommendations (free, rule-based) ─────────────────
+  app.get("/api/farm/:farmId/recommendations", asyncHandler(async (req, res) => {
+    const farmId = parseInt(req.params.farmId);
+    const { lat, lon } = req.query;
+
+    // Default sensor demo values (used when DB is unavailable)
+    let ph = 6.8, tds = 320, waterTemp = 28;
+    let soilMoistureAvg = 62;
+    let fields: Array<{ name: string; value: number; status: string }> = [
+      { name: "Field 1", value: 70, status: "optimal" },
+      { name: "Field 2", value: 44, status: "warning" },
+    ];
+    let rainChanceTomorrow = 20;
+    let forecastTemp = 34;
+
+    // Try reading real data from DB
+    try {
+      const dashboard = await storage.getFarmDashboardData(farmId);
+      if (dashboard) {
+        const wq = (dashboard as any).waterQuality;
+        if (wq && wq.length) {
+          const phEntry  = wq.find((m: any) => m.icon === "ph");
+          const tdsEntry = wq.find((m: any) => m.icon === "tds");
+          const tmpEntry = wq.find((m: any) => m.icon === "temp");
+          if (phEntry)  ph        = parseFloat(String(phEntry.value))  || ph;
+          if (tdsEntry) tds       = parseFloat(String(tdsEntry.value)) || tds;
+          if (tmpEntry) waterTemp = parseFloat(String(tmpEntry.value)) || waterTemp;
+        }
+        const sm = (dashboard as any).soilMoisture;
+        if (sm) {
+          soilMoistureAvg = sm.level || soilMoistureAvg;
+          if (sm.fields?.length) fields = sm.fields;
+        }
+      }
+    } catch (_) {
+      // Fall through to defaults
+    }
+
+    // Try real weather
+    try {
+      const parsedLat = parseFloat(String(lat));
+      const parsedLon = parseFloat(String(lon));
+      const weather = (!isNaN(parsedLat) && !isNaN(parsedLon))
+        ? await fetchRealWeather(parsedLat, parsedLon)
+        : await fetchDefaultWeather();
+      const tomorrowForecast = weather?.forecast?.[1];
+      if (tomorrowForecast) {
+        rainChanceTomorrow = tomorrowForecast.rainChance ?? rainChanceTomorrow;
+      }
+      const todayForecast = weather?.forecast?.[0];
+      if (todayForecast) {
+        const tempStr = todayForecast.temperature?.replace("°C", "");
+        forecastTemp = parseFloat(tempStr) || forecastTemp;
+      }
+    } catch (_) {
+      // Fall through to defaults
+    }
+
+    const recs = generateRecommendations({
+      ph, tds, waterTemp,
+      soilMoistureAvg,
+      fields,
+      rainChanceTomorrow,
+      forecastTemp,
+      hour: new Date().getHours(),
+    });
+
+    res.json({ recommendations: recs, generatedAt: new Date().toISOString() });
   }));
 
   // Chatbot API endpoint - with multiple AI provider support

@@ -86,6 +86,7 @@ export default function Alerts() {
 
   const clearAll = () => {
     setAlerts([]);
+    setVisibleCount(5);
     toast({ title: "All alerts cleared", description: "Your alerts have been cleared." });
   };
 
@@ -126,7 +127,7 @@ export default function Alerts() {
                 {p.count} {p.label}
               </div>
             ))}
-            <button onClick={clearAll} className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-gray-500 dark:text-white/40 transition-all hover:text-red-500 dark:hover:text-red-400"
+            <button type="button" onClick={clearAll} className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-gray-500 dark:text-white/40 transition-all hover:text-red-500 dark:hover:text-red-400"
               style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
               <Trash2 className="h-3 w-3" /> Clear all
             </button>

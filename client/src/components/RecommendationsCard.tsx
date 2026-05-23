@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { useUserLocation } from "@/context/LocationContext";
 
 interface Recommendation {
   id: string;
@@ -76,11 +77,13 @@ const priorityStyles = {
 export default function RecommendationsCard({ farmId = 1 }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const { location } = useUserLocation();
 
   const { data, isLoading, refetch, dataUpdatedAt } = useQuery<RecommendationsData>({
-    queryKey: ["/api/farm", farmId, "recommendations"],
+    queryKey: ["/api/farm", farmId, "recommendations", location?.lat, location?.lon],
     queryFn: async () => {
-      const res = await fetch(`/api/farm/${farmId}/recommendations`);
+      const params = location ? `?lat=${location.lat}&lon=${location.lon}` : "";
+      const res = await fetch(`/api/farm/${farmId}/recommendations${params}`);
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },

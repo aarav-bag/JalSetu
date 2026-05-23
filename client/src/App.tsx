@@ -18,6 +18,7 @@ import IrrigationTipsDetails from "@/pages/IrrigationTipsDetails";
 import ReportDetails from "@/pages/ReportDetails";
 import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from "./context/LanguageContext";
+import { LocationProvider } from "./context/LocationContext";
 import { useAuth } from "./hooks/useAuth";
 
 function Router() {
@@ -97,8 +98,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <ThemeProvider>
-          <Router />
-          <Toaster />
+          <LocationProvider>
+            <Router />
+            <Toaster />
+          </LocationProvider>
         </ThemeProvider>
       </LanguageProvider>
     </QueryClientProvider>

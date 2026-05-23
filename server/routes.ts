@@ -428,6 +428,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // ── Location geocoding (Open-Meteo free geocoding, no API key) ──
+  app.get("/api/geocode", asyncHandler(async (req, res) => {
+    const q = String(req.query.q || "").trim();
+    if (!q) return res.status(400).json({ error: "Query required" });
+
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en&format=json`;
+    const response = await fetch(url);
+    if (!response.ok) return res.status(502).json({ error: "Geocoding service unavailable" });
+
+    const data = await response.json() as { results?: Array<{ name: string; country: string; admin1?: string; latitude: number; longitude: number }> };
+    const results = (data.results || []).map(r => ({
+      cityName: r.admin1 ? `${r.name}, ${r.admin1}` : r.name,
+      country: r.country,
+      lat: r.latitude,
+      lon: r.longitude,
+      display: r.admin1 ? `${r.name}, ${r.admin1}, ${r.country}` : `${r.name}, ${r.country}`,
+    }));
+
+    res.json({ results });
+  }));
+
   // ── Smart AI Recommendations (free, rule-based) ─────────────────
   app.get("/api/farm/:farmId/recommendations", asyncHandler(async (req, res) => {
     const farmId = parseInt(req.params.farmId);

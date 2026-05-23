@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, User, Languages, Bell, HelpCircle, LogOut, ChevronRight, Moon, Sun, Sparkles, X } from "lucide-react";
+import { Settings as SettingsIcon, User, Languages, Bell, HelpCircle, LogOut, ChevronRight, Moon, Sun, Sparkles, MapPin } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import BottomNavigation from "@/components/BottomNavigation";
 import PageShell from "@/components/PageShell";
@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
+import { useUserLocation } from "@/context/LocationContext";
+import LocationPicker from "@/components/LocationPicker";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 const Settings = () => {
@@ -18,6 +20,8 @@ const Settings = () => {
   const [, navigate] = useLocation();
   const { language, setLanguage, t, availableLanguages } = useLanguage();
   const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
+  const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const { location: userLocation, isSet: locationIsSet } = useUserLocation();
 
   const handleLogout = () => {
     logout(undefined, {
@@ -44,6 +48,13 @@ const Settings = () => {
           subtext: availableLanguages.find(l => l.code === language)?.name || "English",
           action: <ChevronRight className="h-5 w-5 text-gray-400 dark:text-white/30" />,
           onClick: () => setLanguageDialogOpen(true),
+        },
+        {
+          id: "location", label: "Farm Location",
+          icon: <MapPin className="h-5 w-5 text-blue-500 dark:text-blue-400" />,
+          subtext: locationIsSet && userLocation ? `${userLocation.cityName}` : "Not set — tap to add",
+          action: <ChevronRight className="h-5 w-5 text-gray-400 dark:text-white/30" />,
+          onClick: () => setLocationDialogOpen(true),
         },
       ],
     },
@@ -188,6 +199,28 @@ const Settings = () => {
       </main>
 
       <BottomNavigation />
+
+      {/* Location dialog */}
+      <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-white/60 dark:border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-center card-heading">Farm Location</DialogTitle>
+            <DialogDescription className="text-center card-body">
+              Set your city or village so weather and recommendations are accurate for your area
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <LocationPicker onSet={() => setLocationDialogOpen(false)} compact={false} />
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <DialogClose asChild>
+              <button className="rounded-xl px-5 py-2 text-sm font-semibold glass-tile card-value transition-colors hover:bg-white/30 dark:hover:bg-white/15">
+                Close
+              </button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Language dialog */}
       <Dialog open={languageDialogOpen} onOpenChange={setLanguageDialogOpen}>

@@ -412,6 +412,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }));
 
+  // Water prediction details for a specific farm — uses Open-Meteo 7-day forecast
+  app.get("/api/farm/:farmId/water-prediction", asyncHandler(async (req, res) => {
+    const lat = parseFloat(req.query.lat as string);
+    const lon = parseFloat(req.query.lon as string);
+    try {
+      const weather = (!isNaN(lat) && !isNaN(lon))
+        ? await fetchRealWeather(lat, lon)
+        : await fetchDefaultWeather();
+      res.json(weather);
+    } catch (err) {
+      console.error("Water prediction fetch failed:", err);
+      res.status(500).json({ error: "Failed to fetch weather data" });
+    }
+  }));
+
   // Real weather endpoint using Open-Meteo (free, no API key)
   app.get("/api/weather", asyncHandler(async (req, res) => {
     const lat = parseFloat(req.query.lat as string);

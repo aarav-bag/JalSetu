@@ -7,28 +7,26 @@ import PageShell from "@/components/PageShell";
 
 interface ForecastDay {
   day: string;
+  date: string;
   temperature: string;
+  tempMin: string;
   weather: "sunny" | "cloudy" | "rainy" | "partly-cloudy";
+  rainChance: number;
+  precipitation: number;
+}
+
+interface WeatherResult {
+  message: string;
+  advice: string;
+  forecast: ForecastDay[];
 }
 
 const WaterPredictionDetails = () => {
   const [, params] = useRoute("/water-prediction/:id");
   const farmId = params?.id ? parseInt(params.id) : 1;
-  const { data: predictionData, isLoading } = useQuery({ queryKey: [`/api/farm/${farmId}/water-prediction`] });
-
-  const defaultForecast: ForecastDay[] = [
-    { day: "Today", temperature: "32°C", weather: "sunny" },
-    { day: "Tomorrow", temperature: "30°C", weather: "partly-cloudy" },
-    { day: "Thu", temperature: "27°C", weather: "rainy" },
-    { day: "Fri", temperature: "26°C", weather: "rainy" },
-    { day: "Sat", temperature: "28°C", weather: "partly-cloudy" },
-    { day: "Sun", temperature: "30°C", weather: "sunny" },
-    { day: "Mon", temperature: "31°C", weather: "sunny" },
-  ];
-
-  const prediction = (predictionData as any)?.message || "Rain expected in 2 days";
-  const advice = (predictionData as any)?.advice || "Delay irrigation to save water and energy.";
-  const forecast = (predictionData as any)?.forecast || defaultForecast;
+  const { data: predictionData, isLoading } = useQuery<WeatherResult>({
+    queryKey: [`/api/farm/${farmId}/water-prediction`],
+  });
 
   const getWeatherIcon = (weather: string) => {
     switch (weather) {
@@ -63,13 +61,8 @@ const WaterPredictionDetails = () => {
     }
   };
 
-  const precip = [
-    { day: "Today", amount: "0 mm", level: 0 },
-    { day: "Tomorrow", amount: "0–2 mm", level: 5 },
-    { day: "Thursday", amount: "15–20 mm", level: 70 },
-    { day: "Friday", amount: "10–15 mm", level: 55 },
-    { day: "Weekend", amount: "0–5 mm", level: 15 },
-  ];
+  const forecast = predictionData?.forecast ?? [];
+  const maxPrecip = Math.max(...forecast.map(d => d.precipitation), 1);
 
   return (
     <PageShell>
@@ -104,62 +97,73 @@ const WaterPredictionDetails = () => {
                     <Umbrella className="h-7 w-7 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-bold card-heading">{prediction}</h4>
-                    <p className="text-sm card-body mt-1">{advice}</p>
+                    <h4 className="font-bold card-heading">{predictionData?.message ?? "Loading forecast..."}</h4>
+                    <p className="text-sm card-body mt-1">{predictionData?.advice ?? ""}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* 7-Day Forecast */}
-            <div className="slide-in-left">
-              <h3 className="text-base font-bold card-heading mb-3 flex items-center gap-2">
-                <div className="h-7 w-7 rounded-xl flex items-center justify-center" style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}>
-                  <Calendar className="h-4 w-4 text-indigo-500 dark:text-indigo-300" />
-                </div>
-                7-Day Forecast
-              </h3>
-              <div className="glass-card rounded-[1.25rem] p-5">
-                <div className="overflow-x-auto pb-1">
-                  <div className="flex gap-2 min-w-[460px]">
-                    {forecast.map((day: ForecastDay, i: number) => {
-                      const db = getDayBg(day.weather);
-                      return (
-                        <div key={i} className="flex-1 rounded-2xl p-3 text-center hover:scale-105 transition-all"
-                          style={{ background: db.bg, border: `1px solid ${db.border}` }}>
-                          <p className="text-[10px] font-semibold card-label mb-1.5">{day.day}</p>
-                          <div className="flex justify-center mb-1.5">{getWeatherIcon(day.weather)}</div>
-                          <p className="text-sm font-bold card-value">{day.temperature}</p>
-                        </div>
-                      );
-                    })}
+            {forecast.length > 0 && (
+              <div className="slide-in-left">
+                <h3 className="text-base font-bold card-heading mb-3 flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl flex items-center justify-center" style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}>
+                    <Calendar className="h-4 w-4 text-indigo-500 dark:text-indigo-300" />
+                  </div>
+                  {forecast.length}-Day Forecast
+                </h3>
+                <div className="glass-card rounded-[1.25rem] p-5">
+                  <div className="overflow-x-auto pb-1">
+                    <div className="flex gap-2" style={{ minWidth: `${forecast.length * 70}px` }}>
+                      {forecast.map((day, i) => {
+                        const db = getDayBg(day.weather);
+                        return (
+                          <div key={i} className="flex-1 rounded-2xl p-3 text-center hover:scale-105 transition-all"
+                            style={{ background: db.bg, border: `1px solid ${db.border}` }}>
+                            <p className="text-[10px] font-semibold card-label mb-1.5">{day.day}</p>
+                            <div className="flex justify-center mb-1.5">{getWeatherIcon(day.weather)}</div>
+                            <p className="text-sm font-bold card-value">{day.temperature}</p>
+                            <p className="text-[10px] card-muted mt-0.5">{day.tempMin}</p>
+                            {day.rainChance > 0 && (
+                              <p className="text-[9px] text-blue-500 dark:text-blue-300 font-semibold mt-1">{day.rainChance}%</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Precipitation */}
-            <div className="fade-in">
-              <h3 className="text-base font-bold card-heading mb-3 flex items-center gap-2">
-                <div className="h-7 w-7 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)' }}>
-                  <Droplet className="h-4 w-4 text-blue-500 dark:text-blue-300" />
-                </div>
-                Precipitation Forecast
-              </h3>
-              <div className="glass-card rounded-[1.25rem] p-5 space-y-3">
-                {precip.map((p, i) => (
-                  <div key={i} className={`${i < precip.length - 1 ? 'pb-3 border-b divider' : ''}`}>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-sm font-semibold card-value">{p.day}</span>
-                      <span className="text-xs card-label">{p.amount}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(59,130,246,0.12)' }}>
-                      <div className="h-full bg-blue-400 rounded-full transition-all duration-1000" style={{ width: `${Math.max(p.level, 3)}%` }} />
-                    </div>
+            {forecast.length > 0 && (
+              <div className="fade-in">
+                <h3 className="text-base font-bold card-heading mb-3 flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)' }}>
+                    <Droplet className="h-4 w-4 text-blue-500 dark:text-blue-300" />
                   </div>
-                ))}
+                  Precipitation Forecast
+                </h3>
+                <div className="glass-card rounded-[1.25rem] p-5 space-y-3">
+                  {forecast.map((d, i) => (
+                    <div key={i} className={`${i < forecast.length - 1 ? 'pb-3 border-b divider' : ''}`}>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-sm font-semibold card-value">{d.day}</span>
+                        <span className="text-xs card-label">
+                          {d.precipitation > 0 ? `${d.precipitation} mm` : "0 mm"} · {d.rainChance}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(59,130,246,0.12)' }}>
+                        <div className="h-full bg-blue-400 rounded-full transition-all duration-1000"
+                          style={{ width: `${d.precipitation > 0 ? Math.max((d.precipitation / maxPrecip) * 100, 4) : (d.rainChance > 0 ? 3 : 0)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Water Needs */}
             <div className="scale-in">

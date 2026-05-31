@@ -3,9 +3,12 @@
 
 export interface WeatherForecastDay {
   day: string;
+  date: string;
   temperature: string;
+  tempMin: string;
   weather: "sunny" | "cloudy" | "rainy" | "partly-cloudy";
   rainChance: number;
+  precipitation: number;
 }
 
 export interface WeatherResult {
@@ -65,8 +68,8 @@ export async function fetchRealWeather(lat: number, lon: number): Promise<Weathe
   const url =
     `https://api.open-meteo.com/v1/forecast` +
     `?latitude=${lat}&longitude=${lon}` +
-    `&daily=temperature_2m_max,precipitation_probability_max,weathercode` +
-    `&forecast_days=3&timezone=auto`;
+    `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weathercode` +
+    `&forecast_days=7&timezone=auto`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Open-Meteo error: ${res.status}`);
@@ -76,9 +79,12 @@ export async function fetchRealWeather(lat: number, lon: number): Promise<Weathe
 
   const forecast: WeatherForecastDay[] = daily.time.map((dateStr: string, i: number) => ({
     day: getDayLabel(dateStr, i),
+    date: dateStr,
     temperature: `${Math.round(daily.temperature_2m_max[i])}°C`,
+    tempMin: `${Math.round(daily.temperature_2m_min[i])}°C`,
     weather: wmoToWeather(daily.weathercode[i]),
     rainChance: daily.precipitation_probability_max[i] ?? 0,
+    precipitation: Math.round((daily.precipitation_sum[i] ?? 0) * 10) / 10,
   }));
 
   const { message, advice } = buildMessage(forecast);

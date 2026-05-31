@@ -1,0 +1,50 @@
+2026-05-31T21:05:29.656657389Z #13 DONE 8.0s
+2026-05-31T21:05:30.107669815Z 
+2026-05-31T21:05:30.107697256Z #14 [runner 5/6] COPY --from=builder /app/dist ./dist
+2026-05-31T21:05:30.461612385Z #14 DONE 0.4s
+2026-05-31T21:05:30.650826253Z 
+2026-05-31T21:05:30.650852353Z #15 [runner 6/6] COPY --from=builder /app/client ./client
+2026-05-31T21:05:30.650856363Z #15 DONE 0.0s
+2026-05-31T21:05:30.650859483Z 
+2026-05-31T21:05:30.650863304Z #16 exporting to image
+2026-05-31T21:05:30.650866394Z #16 exporting layers
+2026-05-31T21:05:32.761825059Z #16 exporting layers 2.3s done
+2026-05-31T21:05:32.925986936Z #16 exporting manifest sha256:8978f63f1e282928158069b7747d963e922861a9f6d6ea664b6f85252a2c7184 done
+2026-05-31T21:05:32.926006627Z #16 exporting config sha256:73aff792dcc7c0ea578b2708d849a8f4b74d42e3bffb2c8fe78b21effad5f9c7 done
+2026-05-31T21:05:32.926011677Z #16 pushing layers
+2026-05-31T21:05:36.200371201Z #16 pushing layers 3.4s done
+2026-05-31T21:05:36.200393941Z #16 pushing manifest for image-registry-v2.aws-us-east-1-2.internal.render.com/srv-d8ea4s3bc2fs73ccq49g:bld-d8ea4sjbc2fs73ccq4j0@sha256:8978f63f1e282928158069b7747d963e922861a9f6d6ea664b6f85252a2c7184
+2026-05-31T21:05:36.444618532Z #16 pushing manifest for image-registry-v2.aws-us-east-1-2.internal.render.com/srv-d8ea4s3bc2fs73ccq49g:bld-d8ea4sjbc2fs73ccq4j0@sha256:8978f63f1e282928158069b7747d963e922861a9f6d6ea664b6f85252a2c7184 0.1s done
+2026-05-31T21:05:36.444638943Z #16 DONE 5.8s
+2026-05-31T21:05:36.444643513Z 
+2026-05-31T21:05:36.444649723Z #17 exporting cache to registry
+2026-05-31T21:05:36.444656924Z #17 preparing build cache for export
+2026-05-31T21:05:45.941899048Z #17 sending cache export
+2026-05-31T21:05:50.635180909Z #17 writing cache image manifest sha256:0487094fb52cd2437de428eb1fdd2273a35179ee1825b6e637df8895f4aabd3f
+2026-05-31T21:05:50.812525278Z #17 sending cache export 4.8s done
+2026-05-31T21:05:50.812549348Z #17 writing cache image manifest sha256:0487094fb52cd2437de428eb1fdd2273a35179ee1825b6e637df8895f4aabd3f 0.1s done
+2026-05-31T21:05:50.812556458Z #17 DONE 18.0s
+2026-05-31T21:05:50.812562188Z ------
+2026-05-31T21:05:50.812568019Z  > importing cache manifest from image-registry-v2.aws-us-east-1-2.internal.render.com/srv-d8ea4s3bc2fs73ccq49g:buildcache:
+2026-05-31T21:05:50.812574099Z ------
+2026-05-31T21:05:55.900851276Z ==> Deploying...
+2026-05-31T21:05:55.9988946Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-05-31T21:06:02.739426761Z node:internal/modules/esm/resolve:873
+2026-05-31T21:06:02.739472363Z   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+2026-05-31T21:06:02.739476063Z         ^
+2026-05-31T21:06:02.739478613Z 
+2026-05-31T21:06:02.739481663Z Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+2026-05-31T21:06:02.739485023Z     at packageResolve (node:internal/modules/esm/resolve:873:9)
+2026-05-31T21:06:02.739487633Z     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+2026-05-31T21:06:02.739490083Z     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2026-05-31T21:06:02.739492523Z     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+2026-05-31T21:06:02.739494923Z     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+2026-05-31T21:06:02.739497203Z     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+2026-05-31T21:06:02.739499833Z     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+2026-05-31T21:06:02.739502153Z     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+2026-05-31T21:06:02.739505053Z   code: 'ERR_MODULE_NOT_FOUND'
+2026-05-31T21:06:02.739507533Z }
+2026-05-31T21:06:02.739509804Z 
+2026-05-31T21:06:02.739512174Z Node.js v20.20.2
+2026-05-31T21:06:06.546735692Z ==> Exited with status 1
+2026-05-31T21:06:06.549039967Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

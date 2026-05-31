@@ -15,7 +15,7 @@ const loginSchema = z.object({
 
 export default function Login() {
   const [, navigate] = useLocation();
-  const { login, loginIsPending } = useAuth();
+  const { login, loginIsPending, refetchUser } = useAuth();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -23,7 +23,12 @@ export default function Login() {
   });
 
   function onSubmit(values: z.infer<typeof loginSchema>) {
-    login(values, { onSuccess: () => navigate('/') });
+    login(values, {
+      onSuccess: async () => {
+        await refetchUser();
+        navigate('/');
+      }
+    });
   }
 
   const stats = [

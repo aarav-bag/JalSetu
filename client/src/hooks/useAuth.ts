@@ -30,7 +30,7 @@ export function useAuth() {
   const queryClient = useQueryClient();
   
   // Query to get the current authenticated user
-  const { data: user, isLoading, error, refetch } = useQuery<AuthUser>({
+  const { data: user, isLoading, isFetching, error, refetch } = useQuery<AuthUser>({
     queryKey: ['/api/user'],
     retry: false,
   });
@@ -113,7 +113,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading,
+    isLoading: isLoading || isFetching,
     isAuthenticated: !!user,
     login: login.mutate,
     loginIsPending: login.isPending,

@@ -26,6 +26,8 @@ const WaterPredictionDetails = () => {
   const farmId = params?.id ? parseInt(params.id) : 1;
   const { data: predictionData, isLoading } = useQuery<WeatherResult>({
     queryKey: [`/api/farm/${farmId}/water-prediction`],
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
   });
 
   const getWeatherIcon = (weather: string) => {
@@ -97,8 +99,8 @@ const WaterPredictionDetails = () => {
                     <Umbrella className="h-7 w-7 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-bold card-heading">{predictionData?.message ?? "Loading forecast..."}</h4>
-                    <p className="text-sm card-body mt-1">{predictionData?.advice ?? ""}</p>
+                    <h4 className="font-bold card-heading">{predictionData?.message ?? "Fetching forecast..."}</h4>
+                    <p className="text-sm card-body mt-1">{predictionData?.advice ?? "Please wait while we load live weather data."}</p>
                   </div>
                 </div>
               </div>

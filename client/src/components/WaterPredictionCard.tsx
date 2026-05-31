@@ -167,7 +167,7 @@ const WaterPredictionCard = ({ farmId = 1 }: WaterPredictionCardProps) => {
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              {weather.forecast.map((day, index) => (
+              {weather.forecast.slice(0, 3).map((day, index) => (
                 <div key={index} className="glass-tile rounded-2xl p-3 text-center transition-all duration-200 hover:scale-105">
                   <p className="text-[10px] font-semibold card-label uppercase tracking-wider mb-2">{day.day}</p>
                   <div className="flex justify-center mb-2">{getWeatherIcon(day.weather)}</div>

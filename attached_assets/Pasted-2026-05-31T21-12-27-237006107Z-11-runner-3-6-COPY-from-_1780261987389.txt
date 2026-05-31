@@ -1,0 +1,50 @@
+2026-05-31T21:12:27.237006107Z #11 [runner 3/6] COPY --from=builder /app/node_modules ./node_modules
+2026-05-31T21:12:27.237009817Z #11 CACHED
+2026-05-31T21:12:27.237013447Z 
+2026-05-31T21:12:27.237017417Z #12 [builder 3/6] COPY package*.json ./
+2026-05-31T21:12:27.237021158Z #12 CACHED
+2026-05-31T21:12:27.237024708Z 
+2026-05-31T21:12:27.237028908Z #13 [builder 4/6] RUN npm ci
+2026-05-31T21:12:27.237032838Z #13 CACHED
+2026-05-31T21:12:27.237036388Z 
+2026-05-31T21:12:27.237040098Z #14 [runner 4/6] COPY --from=builder /app/dist ./dist
+2026-05-31T21:12:27.237043829Z #14 CACHED
+2026-05-31T21:12:27.237047399Z 
+2026-05-31T21:12:27.237051129Z #15 [builder 2/6] WORKDIR /app
+2026-05-31T21:12:27.237054819Z #15 CACHED
+2026-05-31T21:12:27.237058409Z 
+2026-05-31T21:12:27.237062119Z #16 [runner 6/6] COPY package*.json ./
+2026-05-31T21:12:27.23706589Z #16 CACHED
+2026-05-31T21:12:27.40800705Z 
+2026-05-31T21:12:27.408049672Z #17 exporting to image
+2026-05-31T21:12:27.408059872Z #17 exporting layers done
+2026-05-31T21:12:27.408068303Z #17 exporting manifest sha256:bb5f46db3945fb738626509fbe791cfb407d0b89a965ad1e4806154b415cceec done
+2026-05-31T21:12:27.408100524Z #17 exporting config sha256:cc1bccd768cc2a4eefcd47ffeff064046b8603268ed98a2a2a6fcab738ed1786 done
+2026-05-31T21:12:27.408109284Z #17 pushing layers
+2026-05-31T21:12:27.41430017Z #17 pushing layers 0.2s done
+2026-05-31T21:12:27.414720187Z #17 pushing manifest for image-registry-v2.aws-us-east-1-2.internal.render.com/srv-d8ea4s3bc2fs73ccq49g:bld-d8ea8d3bc2fs73ccte90@sha256:bb5f46db3945fb738626509fbe791cfb407d0b89a965ad1e4806154b415cceec
+2026-05-31T21:12:27.517964037Z #17 pushing manifest for image-registry-v2.aws-us-east-1-2.internal.render.com/srv-d8ea4s3bc2fs73ccq49g:bld-d8ea8d3bc2fs73ccte90@sha256:bb5f46db3945fb738626509fbe791cfb407d0b89a965ad1e4806154b415cceec 0.0s done
+2026-05-31T21:12:27.517980538Z #17 DONE 0.2s
+2026-05-31T21:12:27.517983728Z 
+2026-05-31T21:12:27.517986818Z #18 exporting cache to registry
+2026-05-31T21:12:27.517989459Z #18 sending cache export
+2026-05-31T21:12:27.745916555Z #18 writing cache image manifest sha256:b25bed7eaa21a7578c3ca89c1f6d324f8874ecb88aa266f6a02cd1cc98dd8afe
+2026-05-31T21:12:27.873027163Z #18 sending cache export 0.4s done
+2026-05-31T21:12:27.873042554Z #18 writing cache image manifest sha256:b25bed7eaa21a7578c3ca89c1f6d324f8874ecb88aa266f6a02cd1cc98dd8afe 0.1s done
+2026-05-31T21:12:27.873047204Z #18 DONE 0.6s
+2026-05-31T21:12:31.671715364Z ==> Deploying...
+2026-05-31T21:12:31.802510584Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-05-31T21:12:44.276331493Z file:///app/node_modules/openai/index.mjs:48
+2026-05-31T21:12:44.276376094Z             throw new Errors.OpenAIError("The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: 'My API Key' }).");
+2026-05-31T21:12:44.276384855Z                   ^
+2026-05-31T21:12:44.276387845Z 
+2026-05-31T21:12:44.276396145Z OpenAIError: The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: 'My API Key' }).
+2026-05-31T21:12:44.276401425Z     at new OpenAI (file:///app/node_modules/openai/index.mjs:48:19)
+2026-05-31T21:12:44.276404285Z     at file:///app/dist/index.js:1087:14
+2026-05-31T21:12:44.276407045Z     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+2026-05-31T21:12:44.276409815Z     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+2026-05-31T21:12:44.276414656Z     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+2026-05-31T21:12:44.276417776Z 
+2026-05-31T21:12:44.276420276Z Node.js v20.20.2
+2026-05-31T21:12:48.25681022Z ==> Exited with status 1
+2026-05-31T21:12:48.259016344Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

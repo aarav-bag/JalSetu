@@ -2,9 +2,16 @@ import OpenAI from "openai";
 import { Request, Response } from "express";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+  if (!openai) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 const FARMING_SYSTEM_PROMPT = `You are JalSetu AI, an expert agricultural assistant specializing in water management and farming practices. You help farmers with:
 
@@ -39,7 +46,7 @@ export async function handleOpenAIChat(req: Request, res: Response) {
       { role: "user", content: message }
     ];
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: messages as any,
       max_tokens: 500,

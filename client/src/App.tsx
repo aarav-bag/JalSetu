@@ -21,6 +21,15 @@ import { LanguageProvider } from "./context/LanguageContext";
 import { LocationProvider } from "./context/LocationContext";
 import { useAuth } from "./hooks/useAuth";
 
+function PageTransition({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  return (
+    <div key={location} className="page-transition" style={{ minHeight: '100%' }}>
+      {children}
+    </div>
+  );
+}
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -32,7 +41,6 @@ function Router() {
     }
     
     if (!isAuthenticated) {
-      // Use setTimeout to avoid state update during render
       setTimeout(() => navigate('/login'), 0);
       return <div className="flex h-screen w-full items-center justify-center">Redirecting...</div>;
     }
@@ -41,55 +49,24 @@ function Router() {
   };
 
   return (
-    <Switch>
-      {/* Public routes */}
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
-      
-      {/* Protected routes */}
-      <Route path="/">
-        {() => <ProtectedRoute component={Home} />}
-      </Route>
-      <Route path="/reports">
-        {() => <ProtectedRoute component={Reports} />}
-      </Route>
-      <Route path="/alerts">
-        {() => <ProtectedRoute component={Alerts} />}
-      </Route>
-      <Route path="/settings">
-        {() => <ProtectedRoute component={Settings} />}
-      </Route>
-
-      <Route path="/edit-profile">
-        {() => <ProtectedRoute component={EditProfile} />}
-      </Route>
-      
-      <Route path="/help-chatbot">
-        {() => <ProtectedRoute component={HelpChatbot} />}
-      </Route>
-      
-      <Route path="/water-quality/:id">
-        {() => <ProtectedRoute component={WaterQualityDetails} />}
-      </Route>
-      
-      <Route path="/soil-moisture/:id">
-        {() => <ProtectedRoute component={SoilMoistureDetails} />}
-      </Route>
-      
-      <Route path="/water-prediction/:id">
-        {() => <ProtectedRoute component={WaterPredictionDetails} />}
-      </Route>
-      
-      <Route path="/irrigation-tips/:id">
-        {() => <ProtectedRoute component={IrrigationTipsDetails} />}
-      </Route>
-      
-      <Route path="/report-details/:type">
-        {() => <ProtectedRoute component={ReportDetails} />}
-      </Route>
-      
-      <Route component={NotFound} />
-    </Switch>
+    <PageTransition>
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
+        <Route path="/">{() => <ProtectedRoute component={Home} />}</Route>
+        <Route path="/reports">{() => <ProtectedRoute component={Reports} />}</Route>
+        <Route path="/alerts">{() => <ProtectedRoute component={Alerts} />}</Route>
+        <Route path="/settings">{() => <ProtectedRoute component={Settings} />}</Route>
+        <Route path="/edit-profile">{() => <ProtectedRoute component={EditProfile} />}</Route>
+        <Route path="/help-chatbot">{() => <ProtectedRoute component={HelpChatbot} />}</Route>
+        <Route path="/water-quality/:id">{() => <ProtectedRoute component={WaterQualityDetails} />}</Route>
+        <Route path="/soil-moisture/:id">{() => <ProtectedRoute component={SoilMoistureDetails} />}</Route>
+        <Route path="/water-prediction/:id">{() => <ProtectedRoute component={WaterPredictionDetails} />}</Route>
+        <Route path="/irrigation-tips/:id">{() => <ProtectedRoute component={IrrigationTipsDetails} />}</Route>
+        <Route path="/report-details/:type">{() => <ProtectedRoute component={ReportDetails} />}</Route>
+        <Route component={NotFound} />
+      </Switch>
+    </PageTransition>
   );
 }
 

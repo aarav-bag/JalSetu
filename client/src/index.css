@@ -245,3 +245,19 @@
 .gradient-purple { background: linear-gradient(135deg, #8b5cf6, #5b21b6); }
 .gradient-red    { background: linear-gradient(135deg, #ef4444, #b91c1c); }
 .gradient-cyan   { background: linear-gradient(135deg, #06b6d4, #0e7490); }
+
+/* Page transition animations */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-transition {
+  animation: page-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

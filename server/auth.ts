@@ -1,5 +1,6 @@
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
 import { Express, Request, Response, NextFunction } from 'express';
@@ -14,7 +15,7 @@ export function setupAuth(app: Express) {
       secret: process.env.SESSION_SECRET || 'jalsetu-secret-key',
       resave: false,
       saveUninitialized: false,
-      cookie: { 
+      cookie: {
         secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 1 day
       }
@@ -45,7 +46,7 @@ export function setupAuth(app: Express) {
       try {
         // Try database user only if not test user
         const user = await storage.getUserByUsername(username);
-        
+
         // User not found
         if (!user) {
           return done(null, false, { message: 'Incorrect username.' });
@@ -53,7 +54,7 @@ export function setupAuth(app: Express) {
 
         // Password validation
         const isValid = await bcrypt.compare(password, user.password);
-        
+
         if (!isValid) {
           return done(null, false, { message: 'Incorrect password.' });
         }
@@ -65,6 +66,60 @@ export function setupAuth(app: Express) {
       }
     })
   );
+
+  // Configure Google OAuth strategy (only if credentials are available)
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    const callbackURL = process.env.NODE_ENV === 'production'
+      ? 'https://jalsetu.isroot.in/api/auth/google/callback'
+      : '/api/auth/google/callback';
+
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: callbackURL,
+        },
+        async (accessToken, refreshToken, profile, done) => {
+          try {
+            const email = profile.emails?.[0]?.value;
+            const name = profile.displayName || profile.name?.givenName || profile.name?.familyName || profile.username;
+            const firstName = profile.name?.givenName || '';
+            const lastName = profile.name?.familyName || '';
+            const googleId = profile.id;
+
+            // Use email as the primary identifier
+            if (!email) {
+              return done(null, false, { message: 'No email found from Google profile.' });
+            }
+
+            // Try to find existing user by email
+            let user = await storage.getUserByEmail(email);
+
+            if (!user) {
+              // Create new user from Google profile
+              const username = email.split('@')[0] + '_' + googleId.slice(-6);
+              const randomPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+              const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+              user = await storage.createUser({
+                username,
+                password: hashedPassword,
+                firstName,
+                lastName,
+                email,
+              });
+            }
+
+            return done(null, user);
+          } catch (error) {
+            console.error('Google OAuth error:', error);
+            return done(null, false, { message: 'Failed to authenticate with Google.' });
+          }
+        }
+      )
+    );
+  }
 
   // Serialize user to the session
   passport.serializeUser((user: any, done) => {

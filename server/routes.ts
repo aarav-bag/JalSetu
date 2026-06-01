@@ -125,6 +125,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google OAuth routes
+  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+  app.get("/api/auth/google/callback",
+    passport.authenticate("google", { failureRedirect: "/login" }),
+    (req, res) => {
+      // Successful authentication, redirect home
+      res.redirect("/");
+    }
+  );
+
   // Farm routes - protected with authentication
   app.post("/api/farms", isAuthenticated, asyncHandler(async (req, res) => {
     const farmData = insertFarmSchema.parse({

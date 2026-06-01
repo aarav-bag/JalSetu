@@ -1,9 +1,9 @@
 import { Home, BarChart2, Bell, Settings } from "lucide-react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 
 const BottomNavigation = () => {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { t } = useLanguage();
 
   const navItems = [
@@ -19,28 +19,31 @@ const BottomNavigation = () => {
         {navItems.map((item) => {
           const isActive = location === item.path;
           return (
-            <Link key={item.name} href={item.path}>
-              <div className="flex flex-col items-center gap-1 cursor-pointer group">
-                <div className={`p-2.5 rounded-2xl transition-all duration-300 ${
+            <button
+              key={item.name}
+              onClick={() => navigate(item.path)}
+              className="flex flex-col items-center gap-1 cursor-pointer group bg-transparent border-0 p-0"
+              aria-label={item.name}
+            >
+              <div className={`p-2.5 rounded-2xl transition-all duration-300 ${
+                isActive
+                  ? 'bg-gradient-to-br from-blue-500/90 to-cyan-500/90 shadow-lg shadow-blue-500/30 scale-110 border border-white/30'
+                  : 'hover:bg-white/20 dark:hover:bg-white/15 hover:scale-105'
+              }`}>
+                <item.icon className={`h-5 w-5 transition-colors duration-200 ${
                   isActive
-                    ? 'bg-gradient-to-br from-blue-500/90 to-cyan-500/90 shadow-lg shadow-blue-500/30 scale-110 border border-white/30'
-                    : 'hover:bg-white/20 dark:hover:bg-white/15 hover:scale-105'
-                }`}>
-                  <item.icon className={`h-5 w-5 transition-colors duration-200 ${
-                    isActive
-                      ? 'text-white'
-                      : 'text-gray-500 dark:text-white/50 group-hover:text-gray-700 dark:group-hover:text-white/80'
-                  }`} />
-                </div>
-                <span className={`text-[10px] font-semibold tracking-wide transition-colors duration-200 ${
-                  isActive
-                    ? 'text-blue-600 dark:text-cyan-300'
-                    : 'text-gray-400 dark:text-white/40 group-hover:text-gray-600 dark:group-hover:text-white/70'
-                }`}>
-                  {item.name}
-                </span>
+                    ? 'text-white'
+                    : 'text-gray-500 dark:text-white/50 group-hover:text-gray-700 dark:group-hover:text-white/80'
+                }`} />
               </div>
-            </Link>
+              <span className={`text-[10px] font-semibold tracking-wide transition-colors duration-200 ${
+                isActive
+                  ? 'text-blue-400 dark:text-cyan-300'
+                  : 'text-gray-400 dark:text-white/40 group-hover:text-gray-600 dark:group-hover:text-white/70'
+              }`}>
+                {item.name}
+              </span>
+            </button>
           );
         })}
       </div>

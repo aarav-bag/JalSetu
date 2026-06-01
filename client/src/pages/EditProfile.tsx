@@ -93,7 +93,7 @@ export default function EditProfile() {
         </div>
       </header>
       
-      <main className="flex-1 px-5 pt-4 pb-4 overflow-y-auto z-10">
+      <main className="flex-1 px-5 pt-4 pb-28 overflow-y-auto z-10">
         <div className="space-y-6">
           <Card className="rounded-3xl shadow-lg overflow-hidden border-0 scale-in">
             <CardContent className="p-6">

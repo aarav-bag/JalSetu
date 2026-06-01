@@ -36,7 +36,7 @@ const Home = () => {
   return (
     <PageShell>
       <Header />
-      <main className="flex-1 px-4 pt-1 pb-4 overflow-y-auto">
+      <main className="flex-1 px-4 pt-1 pb-28 overflow-y-auto z-10">
         {isLoading ? (
           <div className="space-y-4 mt-2">
             <SkeletonCard height="h-52" />

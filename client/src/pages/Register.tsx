@@ -138,7 +138,7 @@ export default function Register() {
                       <FormLabel className="text-gray-300 text-sm font-medium">Last Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Sharma"
+                          placeholder="Dixit"
                           className="bg-gray-900 border-gray-800 text-white placeholder:text-gray-600 rounded-xl h-11 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                           {...field}
                         />

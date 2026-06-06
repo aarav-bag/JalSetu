@@ -75,13 +75,20 @@
   }
 }
 
-/* Hide scrollbar on scrollable content areas while keeping scroll functionality */
-main {
+/* Hide all scrollbars globally while keeping scroll functionality */
+html, body, main {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
 main::-webkit-scrollbar {
   display: none;
+}
+
+/* Prevent horizontal overflow on body */
+body {
+  overflow-x: hidden;
 }
 
 /* ========= Glass card system ========= */

@@ -91,9 +91,16 @@ main::-webkit-scrollbar {
   display: none;
 }
 
-/* Prevent horizontal overflow and overscroll bounce on body */
+/* Lock html and body completely — all scrolling happens inside main */
+html {
+  overflow: hidden;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
 body {
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100%;
   overscroll-behavior: none;
 }
 

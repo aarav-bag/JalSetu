@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { randomBytes } from "crypto";
 import { storage } from "./storage";
 import { db } from "./db";
 import { z } from "zod";
@@ -555,8 +556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (farm.userId !== (req.user as any).id) return res.status(403).json({ error: "Forbidden" });
 
     if (!farm.esp32ApiKey) {
-      const key = "jalsetu_" + Array.from(crypto.getRandomValues(new Uint8Array(12)))
-        .map(b => b.toString(16).padStart(2, "0")).join("");
+      const key = "jalsetu_" + randomBytes(12).toString("hex");
       const updated = await storage.setFarmApiKey(farmId, key);
       return res.json({ apiKey: updated?.esp32ApiKey });
     }
@@ -570,8 +570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!farm) return res.status(404).json({ error: "Farm not found" });
     if (farm.userId !== (req.user as any).id) return res.status(403).json({ error: "Forbidden" });
 
-    const key = "jalsetu_" + Array.from(crypto.getRandomValues(new Uint8Array(12)))
-      .map(b => b.toString(16).padStart(2, "0")).join("");
+    const key = "jalsetu_" + randomBytes(12).toString("hex");
     const updated = await storage.setFarmApiKey(farmId, key);
     res.json({ apiKey: updated?.esp32ApiKey });
   }));

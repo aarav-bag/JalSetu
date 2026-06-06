@@ -69,8 +69,8 @@ export function setupAuth(app: Express) {
 
   // Configure Google OAuth strategy (only if credentials are available)
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    const callbackURL = process.env.NODE_ENV === 'production'
-      ? 'https://jalsetu.isroot.in/api/auth/google/callback'
+    const callbackURL = process.env.BASE_URL
+      ? `${process.env.BASE_URL}/api/auth/google/callback`
       : '/api/auth/google/callback';
 
     passport.use(

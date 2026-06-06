@@ -20,8 +20,10 @@ export interface IStorage {
   // Farm methods
   getFarm(id: number): Promise<Farm | undefined>;
   getFarmsByUserId(userId: number): Promise<Farm[]>;
+  getFarmByApiKey(apiKey: string): Promise<Farm | undefined>;
   createFarm(farm: InsertFarm): Promise<Farm>;
   updateFarm(id: number, farm: Partial<InsertFarm>): Promise<Farm | undefined>;
+  setFarmApiKey(farmId: number, apiKey: string): Promise<Farm | undefined>;
   
   // Field methods
   getField(id: number): Promise<Field | undefined>;
@@ -84,6 +86,11 @@ export class DatabaseStorage implements IStorage {
   async getFarmsByUserId(userId: number): Promise<Farm[]> {
     return await db.select().from(farms).where(eq(farms.userId, userId));
   }
+
+  async getFarmByApiKey(apiKey: string): Promise<Farm | undefined> {
+    const [farm] = await db.select().from(farms).where(eq(farms.esp32ApiKey, apiKey));
+    return farm;
+  }
   
   async createFarm(farm: InsertFarm): Promise<Farm> {
     const [newFarm] = await db.insert(farms).values(farm).returning();
@@ -92,6 +99,11 @@ export class DatabaseStorage implements IStorage {
   
   async updateFarm(id: number, farmData: Partial<InsertFarm>): Promise<Farm | undefined> {
     const [farm] = await db.update(farms).set(farmData).where(eq(farms.id, id)).returning();
+    return farm;
+  }
+
+  async setFarmApiKey(farmId: number, apiKey: string): Promise<Farm | undefined> {
+    const [farm] = await db.update(farms).set({ esp32ApiKey: apiKey }).where(eq(farms.id, farmId)).returning();
     return farm;
   }
   

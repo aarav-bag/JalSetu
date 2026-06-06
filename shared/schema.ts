@@ -23,6 +23,7 @@ export const farms = pgTable("farms", {
   location: text("location").notNull(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: text("status").default("Your farm is thriving"),
+  esp32ApiKey: text("esp32_api_key"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, User, Languages, Bell, HelpCircle, LogOut, ChevronRight, Moon, Sun, Sparkles, MapPin } from "lucide-react";
+import { Settings as SettingsIcon, User, Languages, Bell, HelpCircle, LogOut, ChevronRight, Moon, Sun, Sparkles, MapPin, Cpu } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import BottomNavigation from "@/components/BottomNavigation";
 import PageShell from "@/components/PageShell";
@@ -92,6 +92,18 @@ const Settings = () => {
               toast({ title: val ? "Notifications enabled" : "Notifications disabled", description: "Your notification preference has been updated." });
             }} className="data-[state=checked]:bg-blue-500" />
           ),
+        },
+      ],
+    },
+    {
+      title: "Device",
+      items: [
+        {
+          id: "esp32", label: "ESP32 Device Setup",
+          icon: <Cpu className="h-5 w-5 text-blue-500 dark:text-blue-400" />,
+          subtext: "Connect sensors to your dashboard",
+          action: <ChevronRight className="h-5 w-5 text-gray-400 dark:text-white/30" />,
+          onClick: () => navigate('/device-setup'),
         },
       ],
     },

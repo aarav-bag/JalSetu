@@ -545,6 +545,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ recommendations: recs, generatedAt: new Date().toISOString() });
   }));
 
+  // ── ESP32 API Key management ─────────────────────────────────────
+
+  // Get (or auto-generate) the ESP32 API key for a farm
+  app.get("/api/farm/:farmId/esp32-key", isAuthenticated, asyncHandler(async (req, res) => {
+    const farmId = parseInt(req.params.farmId);
+    const farm = await storage.getFarm(farmId);
+    if (!farm) return res.status(404).json({ error: "Farm not found" });
+    if (farm.userId !== (req.user as any).id) return res.status(403).json({ error: "Forbidden" });
+
+    if (!farm.esp32ApiKey) {
+      const key = "jalsetu_" + Array.from(crypto.getRandomValues(new Uint8Array(12)))
+        .map(b => b.toString(16).padStart(2, "0")).join("");
+      const updated = await storage.setFarmApiKey(farmId, key);
+      return res.json({ apiKey: updated?.esp32ApiKey });
+    }
+    res.json({ apiKey: farm.esp32ApiKey });
+  }));
+
+  // Regenerate ESP32 API key for a farm
+  app.post("/api/farm/:farmId/esp32-key/regenerate", isAuthenticated, asyncHandler(async (req, res) => {
+    const farmId = parseInt(req.params.farmId);
+    const farm = await storage.getFarm(farmId);
+    if (!farm) return res.status(404).json({ error: "Farm not found" });
+    if (farm.userId !== (req.user as any).id) return res.status(403).json({ error: "Forbidden" });
+
+    const key = "jalsetu_" + Array.from(crypto.getRandomValues(new Uint8Array(12)))
+      .map(b => b.toString(16).padStart(2, "0")).join("");
+    const updated = await storage.setFarmApiKey(farmId, key);
+    res.json({ apiKey: updated?.esp32ApiKey });
+  }));
+
+  // ── ESP32 Sensor Data Ingestion (no session auth — uses API key) ──
+  app.post("/api/esp32/sensor-data", asyncHandler(async (req, res) => {
+    const schema = z.object({
+      apiKey: z.string().min(1),
+      farmId: z.number().int().positive(),
+      fieldId: z.number().int().positive(),
+      ph: z.number().min(0).max(14).optional(),
+      soilMoisture: z.number().min(0).max(100).optional(),
+      waterTemp: z.number().optional(),
+    });
+
+    const data = schema.parse(req.body);
+
+    // Validate API key
+    const farm = await storage.getFarmByApiKey(data.apiKey);
+    if (!farm || farm.id !== data.farmId) {
+      return res.status(401).json({ error: "Invalid API key or farm ID" });
+    }
+
+    const saved: Record<string, any> = {};
+
+    // Save water quality (pH + temperature)
+    if (data.ph !== undefined) {
+      const wq = await storage.createWaterQuality({
+        farmId: data.farmId,
+        phLevel: data.ph.toFixed(2),
+        tds: "0 ppm",
+        temperature: data.waterTemp !== undefined ? `${data.waterTemp.toFixed(1)}°C` : "N/A",
+      });
+      saved.waterQuality = wq;
+    }
+
+    // Save soil moisture
+    if (data.soilMoisture !== undefined) {
+      const level = Math.round(data.soilMoisture);
+      const status = level >= 60 ? "optimal" : level >= 35 ? "warning" : "danger";
+      const sm = await storage.createSoilMoisture({
+        farmId: data.farmId,
+        fieldId: data.fieldId,
+        moistureLevel: level,
+        status,
+      });
+      saved.soilMoisture = sm;
+    }
+
+    res.status(201).json({ success: true, saved });
+  }));
+
   // Chatbot API endpoint - with multiple AI provider support
   app.post("/api/chat", asyncHandler(async (req, res) => {
     const { provider = "openai" } = req.body;

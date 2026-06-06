@@ -70,11 +70,18 @@
   * {
     @apply border-border;
   }
-  html, body {
+  body {
     @apply bg-background text-foreground;
-    overflow: hidden;
-    height: 100%;
   }
+}
+
+/* Hide scrollbar on scrollable content areas while keeping scroll functionality */
+main {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+main::-webkit-scrollbar {
+  display: none;
 }
 
 /* ========= Glass card system ========= */

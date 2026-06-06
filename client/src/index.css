@@ -91,9 +91,15 @@ main::-webkit-scrollbar {
   display: none;
 }
 
-/* Prevent horizontal overflow on body */
+/* Prevent horizontal overflow and overscroll bounce on body */
 body {
   overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+/* Contain scroll within main so it never bleeds to body */
+main {
+  overscroll-behavior: contain;
 }
 
 /* ========= Glass card system ========= */

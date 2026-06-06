@@ -71,7 +71,12 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8f4fd 40%, #ede9fe 100%);
+    min-height: 100vh;
+  }
+  .dark body {
+    background: linear-gradient(135deg, #0f172a 0%, #0c1a2e 40%, #1e1b4b 100%);
   }
 }
 

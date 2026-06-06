@@ -1,6 +1,5 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { randomBytes } from "crypto";
 import { storage } from "./storage";
 import { db } from "./db";
 import { z } from "zod";
@@ -546,39 +545,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ recommendations: recs, generatedAt: new Date().toISOString() });
   }));
 
-  // ── ESP32 API Key management ─────────────────────────────────────
+  // ── ESP32 Integration (demo — single hardcoded secret) ───────────
+  // Secret the ESP32 sends in every request. Change this if you want.
+  const ESP32_SECRET = "JALSETU2024";
 
-  // Get (or auto-generate) the ESP32 API key for a farm
-  app.get("/api/farm/:farmId/esp32-key", isAuthenticated, asyncHandler(async (req, res) => {
-    const farmId = parseInt(req.params.farmId);
-    const farm = await storage.getFarm(farmId);
-    if (!farm) return res.status(404).json({ error: "Farm not found" });
-    if (farm.userId !== (req.user as any).id) return res.status(403).json({ error: "Forbidden" });
+  // In-memory status: tracks the last time the ESP32 sent data
+  let esp32LastSeen: Date | null = null;
+  let esp32LastData: { ph?: number; soilMoisture?: number } = {};
 
-    if (!farm.esp32ApiKey) {
-      const key = "jalsetu_" + randomBytes(12).toString("hex");
-      const updated = await storage.setFarmApiKey(farmId, key);
-      return res.json({ apiKey: updated?.esp32ApiKey });
-    }
-    res.json({ apiKey: farm.esp32ApiKey });
-  }));
+  // Status endpoint — frontend polls this to show online/offline badge
+  app.get("/api/esp32/status", (req, res) => {
+    const onlineThresholdMs = 5 * 60 * 1000; // 5 minutes
+    const online = esp32LastSeen !== null &&
+      (Date.now() - esp32LastSeen.getTime()) < onlineThresholdMs;
+    res.json({
+      online,
+      lastSeen: esp32LastSeen?.toISOString() ?? null,
+      lastData: esp32LastData,
+    });
+  });
 
-  // Regenerate ESP32 API key for a farm
-  app.post("/api/farm/:farmId/esp32-key/regenerate", isAuthenticated, asyncHandler(async (req, res) => {
-    const farmId = parseInt(req.params.farmId);
-    const farm = await storage.getFarm(farmId);
-    if (!farm) return res.status(404).json({ error: "Farm not found" });
-    if (farm.userId !== (req.user as any).id) return res.status(403).json({ error: "Forbidden" });
-
-    const key = "jalsetu_" + randomBytes(12).toString("hex");
-    const updated = await storage.setFarmApiKey(farmId, key);
-    res.json({ apiKey: updated?.esp32ApiKey });
-  }));
-
-  // ── ESP32 Sensor Data Ingestion (no session auth — uses API key) ──
+  // Sensor data ingestion — called by the ESP32, no login needed
   app.post("/api/esp32/sensor-data", asyncHandler(async (req, res) => {
     const schema = z.object({
-      apiKey: z.string().min(1),
+      secret: z.string(),
       farmId: z.number().int().positive(),
       fieldId: z.number().int().positive(),
       ph: z.number().min(0).max(14).optional(),
@@ -588,36 +578,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const data = schema.parse(req.body);
 
-    // Validate API key
-    const farm = await storage.getFarmByApiKey(data.apiKey);
-    if (!farm || farm.id !== data.farmId) {
-      return res.status(401).json({ error: "Invalid API key or farm ID" });
+    if (data.secret !== ESP32_SECRET) {
+      return res.status(401).json({ error: "Invalid secret" });
     }
+
+    // Update in-memory status
+    esp32LastSeen = new Date();
+    esp32LastData = { ph: data.ph, soilMoisture: data.soilMoisture };
 
     const saved: Record<string, any> = {};
 
-    // Save water quality (pH + temperature)
     if (data.ph !== undefined) {
-      const wq = await storage.createWaterQuality({
+      saved.waterQuality = await storage.createWaterQuality({
         farmId: data.farmId,
         phLevel: data.ph.toFixed(2),
         tds: "0 ppm",
         temperature: data.waterTemp !== undefined ? `${data.waterTemp.toFixed(1)}°C` : "N/A",
       });
-      saved.waterQuality = wq;
     }
 
-    // Save soil moisture
     if (data.soilMoisture !== undefined) {
       const level = Math.round(data.soilMoisture);
-      const status = level >= 60 ? "optimal" : level >= 35 ? "warning" : "danger";
-      const sm = await storage.createSoilMoisture({
+      saved.soilMoisture = await storage.createSoilMoisture({
         farmId: data.farmId,
         fieldId: data.fieldId,
         moistureLevel: level,
-        status,
+        status: level >= 60 ? "optimal" : level >= 35 ? "warning" : "danger",
       });
-      saved.soilMoisture = sm;
     }
 
     res.status(201).json({ success: true, saved });

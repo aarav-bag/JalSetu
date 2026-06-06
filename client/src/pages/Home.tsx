@@ -9,6 +9,7 @@ import BottomNavigation from "@/components/BottomNavigation";
 import PageShell from "@/components/PageShell";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { Cpu, Wifi, WifiOff } from "lucide-react";
 
 interface FarmData {
   farmer: { id: number; name: string };
@@ -29,6 +30,47 @@ const SkeletonCard = ({ height = "h-40" }: { height?: string }) => (
   </div>
 );
 
+interface Esp32Status {
+  online: boolean;
+  lastSeen: string | null;
+  lastData: { ph?: number; soilMoisture?: number };
+}
+
+function timeAgo(iso: string): string {
+  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  return `${Math.floor(secs / 3600)}h ago`;
+}
+
+const Esp32Badge = () => {
+  const { data } = useQuery<Esp32Status>({
+    queryKey: ["/api/esp32/status"],
+    refetchInterval: 30000,
+  });
+  if (!data) return null;
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 rounded-2xl"
+      style={{
+        background: data.online ? "rgba(34,197,94,0.12)" : "rgba(148,163,184,0.10)",
+        border: `1px solid ${data.online ? "rgba(34,197,94,0.3)" : "rgba(148,163,184,0.2)"}`,
+      }}
+    >
+      <Cpu className={`h-4 w-4 ${data.online ? "text-emerald-500" : "text-slate-400"}`} />
+      {data.online
+        ? <Wifi className="h-3.5 w-3.5 text-emerald-500" />
+        : <WifiOff className="h-3.5 w-3.5 text-slate-400" />}
+      <span className={`text-xs font-semibold ${data.online ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
+        ESP32 {data.online ? "Online" : "Offline"}
+      </span>
+      {data.lastSeen && (
+        <span className="text-xs card-muted">· {timeAgo(data.lastSeen)}</span>
+      )}
+    </div>
+  );
+};
+
 const Home = () => {
   const { data: farmData, isLoading } = useQuery<FarmData>({ queryKey: ["/api/user-dashboard"] });
   const { user } = useAuth();
@@ -47,6 +89,7 @@ const Home = () => {
           </div>
         ) : (
           <div className="space-y-4 mt-2">
+            <Esp32Badge />
             <WelcomeCard
               farmerName={user?.firstName || farmData?.farmer.name || "Farmer"}
               farmStatus={farmData?.farm?.status || "Farm Active"}

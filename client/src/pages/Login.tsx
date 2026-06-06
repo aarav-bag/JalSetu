@@ -7,7 +7,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Droplets, Sprout, Wind, Thermometer } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
 
 const loginSchema = z.object({
   username: z.string().min(3, { message: 'Username must be at least 3 characters' }),
@@ -145,20 +144,6 @@ export default function Login() {
               </Button>
             </form>
           </Form>
-
-          <div className="mt-5 flex items-center gap-3">
-            <div className="flex-1 h-px bg-gray-800" />
-            <span className="text-gray-500 text-xs font-medium uppercase tracking-wider">or</span>
-            <div className="flex-1 h-px bg-gray-800" />
-          </div>
-
-          <button
-            onClick={() => window.location.href = '/api/auth/google'}
-            className="w-full h-12 mt-5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-white rounded-xl transition-all duration-300 flex items-center justify-center gap-3 font-medium"
-          >
-            <FcGoogle className="h-5 w-5" />
-            Continue with Google
-          </button>
 
           <div className="mt-6 text-center">
             <span className="text-gray-500 text-sm">Don't have an account? </span>

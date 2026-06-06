@@ -7,7 +7,7 @@ interface PageShellProps {
 
 export default function PageShell({ children, className = "" }: PageShellProps) {
   return (
-    <div className={`max-w-md mx-auto min-h-screen flex flex-col relative transition-colors duration-500 ${className}`}>
+    <div className={`max-w-md mx-auto h-screen flex flex-col relative overflow-hidden transition-colors duration-500 ${className}`}>
       {/* Background */}
       <div className="fixed inset-0 -z-10 page-bg transition-colors duration-500" />
 

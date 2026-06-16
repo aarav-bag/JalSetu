@@ -29,10 +29,10 @@ export function setupAuth(app: Express) {
   // Configure local strategy
   passport.use(
     new LocalStrategy(async (username, password, done) => {
-      // Test user for development - check first before any database calls
+      // Demo login — maps to the real seeded farm (user id=1)
       if (username === 'aarav' && password === '123456') {
         const testUser = {
-          id: 999,
+          id: 1,
           username: 'aarav',
           firstName: 'Aarav',
           lastName: 'Sharma',
@@ -129,36 +129,9 @@ export function setupAuth(app: Express) {
   // Deserialize user from the session
   passport.deserializeUser(async (id: number, done) => {
     try {
-      // Handle test user
-      if (id === 999) {
-        const testUser = {
-          id: 999,
-          username: 'aarav',
-          firstName: 'Aarav',
-          lastName: 'Sharma',
-          email: 'aarav@jalsetu.app',
-          password: 'hashed_password',
-          createdAt: new Date().toISOString()
-        };
-        return done(null, testUser);
-      }
-
       const user = await storage.getUser(id);
       done(null, user);
     } catch (error) {
-      // If database fails and it's the test user, still allow it
-      if (id === 999) {
-        const testUser = {
-          id: 999,
-          username: 'aarav',
-          firstName: 'Aarav',
-          lastName: 'Sharma',
-          email: 'aarav@jalsetu.app',
-          password: 'hashed_password',
-          createdAt: new Date().toISOString()
-        };
-        return done(null, testUser);
-      }
       done(error);
     }
   });

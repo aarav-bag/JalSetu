@@ -36,21 +36,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     };
 
-  // Test login endpoint for development
+  // Test login endpoint for development (id=1 maps to seeded farm data)
   app.post("/api/test-login", (req, res) => {
     const { username, password } = req.body;
     
     if (username === 'aarav' && password === '123456') {
       const testUser = {
-        id: 999,
+        id: 1,
         username: 'aarav',
         firstName: 'Aarav',
         lastName: 'Sharma',
         email: 'aarav@jalsetu.app',
         createdAt: new Date().toISOString()
       };
-      
-      // Create a session manually
       req.session.user = testUser;
       res.json({ user: testUser });
     } else {

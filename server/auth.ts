@@ -26,6 +26,15 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // If Passport didn't restore a user but the session has one (demo login path),
+  // populate req.user so all route handlers work without changes.
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user && (req.session as any)?.user) {
+      req.user = (req.session as any).user;
+    }
+    next();
+  });
+
   // Configure local strategy
   passport.use(
     new LocalStrategy(async (username, password, done) => {
@@ -138,8 +147,9 @@ export function setupAuth(app: Express) {
 }
 
 // Middleware to check if user is authenticated
+// Accepts both Passport sessions and direct session users (demo login)
 export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (req.isAuthenticated()) {
+  if (req.isAuthenticated() || (req.session as any)?.user) {
     return next();
   }
   res.status(401).json({ message: 'Unauthorized' });

@@ -81,13 +81,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
   
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
+    const { username, password } = req.body || {};
+
+    // Demo credentials — bypass Passport and DB entirely
+    if (username === 'aarav' && password === '123456') {
+      const demoUser = {
+        id: 1,
+        username: 'aarav',
+        firstName: 'Aarav',
+        lastName: 'Sharma',
+        email: 'aarav@jalsetu.app',
+        createdAt: new Date().toISOString(),
+      };
+      (req.session as any).user = demoUser;
+      req.user = demoUser as any;
+      return res.json({ user: demoUser });
+    }
+
+    passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
         return next(err);
       }
       
       if (!user) {
-        return res.status(401).json({ message: info.message || "Invalid credentials" });
+        return res.status(401).json({ message: info?.message || "Invalid credentials" });
       }
       
       req.logIn(user, (loginErr) => {
@@ -96,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Don't return password in response
-        const { password, ...userWithoutPassword } = user;
+        const { password: _pw, ...userWithoutPassword } = user;
         return res.json({ user: userWithoutPassword });
       });
     })(req, res, next);

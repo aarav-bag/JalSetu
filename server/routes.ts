@@ -551,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // In-memory status: tracks the last time the ESP32 sent data
   let esp32LastSeen: Date | null = null;
-  let esp32LastData: { ph?: number; soilMoisture?: number } = {};
+  let esp32LastData: { tds?: number; soilMoisture?: number } = {};
 
   // Status endpoint — frontend polls this to show online/offline badge
   app.get("/api/esp32/status", (req, res) => {
@@ -566,14 +566,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sensor data ingestion — called by the ESP32, no login needed
+  // Active sensors: TDS + Soil Moisture (pH sensor temporarily disabled)
   app.post("/api/esp32/sensor-data", asyncHandler(async (req, res) => {
     const schema = z.object({
       secret: z.string(),
       farmId: z.number().int().positive(),
       fieldId: z.number().int().positive(),
-      ph: z.number().min(0).max(14).optional(),
-      soilMoisture: z.number().min(0).max(100).optional(),
-      waterTemp: z.number().optional(),
+      tds: z.number().min(0).optional(),          // TDS in ppm
+      soilMoisture: z.number().min(0).max(100).optional(), // moisture %
+      waterTemp: z.number().optional(),            // optional temperature °C
     });
 
     const data = schema.parse(req.body);
@@ -584,19 +585,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Update in-memory status
     esp32LastSeen = new Date();
-    esp32LastData = { ph: data.ph, soilMoisture: data.soilMoisture };
+    esp32LastData = { tds: data.tds, soilMoisture: data.soilMoisture };
 
     const saved: Record<string, any> = {};
 
-    if (data.ph !== undefined) {
+    // Save TDS water quality reading (pH left as "N/A" until sensor replaced)
+    if (data.tds !== undefined) {
       saved.waterQuality = await storage.createWaterQuality({
         farmId: data.farmId,
-        phLevel: data.ph.toFixed(2),
-        tds: "0 ppm",
+        phLevel: "N/A",
+        tds: `${Math.round(data.tds)} ppm`,
         temperature: data.waterTemp !== undefined ? `${data.waterTemp.toFixed(1)}°C` : "N/A",
       });
     }
 
+    // Save soil moisture reading
     if (data.soilMoisture !== undefined) {
       const level = Math.round(data.soilMoisture);
       saved.soilMoisture = await storage.createSoilMoisture({

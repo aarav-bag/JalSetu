@@ -10,6 +10,7 @@ import PageShell from "@/components/PageShell";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Cpu, Wifi, WifiOff } from "lucide-react";
+import { useRef, useEffect } from "react";
 
 interface FarmData {
   farmer: { id: number; name: string };
@@ -43,11 +44,46 @@ function timeAgo(iso: string): string {
   return `${Math.floor(secs / 3600)}h ago`;
 }
 
+function playBeep(type: "connect" | "disconnect") {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const notes = type === "connect" ? [440, 660, 880] : [880, 550, 330];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0.25, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      osc.start(t);
+      osc.stop(t + 0.12);
+    });
+  } catch (_) {}
+}
+
 const Esp32Badge = () => {
   const { data } = useQuery<Esp32Status>({
     queryKey: ["/api/esp32/status"],
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
+
+  const prevOnline = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (!data) return;
+    if (prevOnline.current === null) {
+      prevOnline.current = data.online;
+      return;
+    }
+    if (prevOnline.current !== data.online) {
+      playBeep(data.online ? "connect" : "disconnect");
+      prevOnline.current = data.online;
+    }
+  }, [data?.online]);
+
   if (!data) return null;
   return (
     <div

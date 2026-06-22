@@ -79,18 +79,14 @@ export async function initDb() {
         ON CONFLICT (id) DO NOTHING;
 
         INSERT INTO fields (id, name, farm_id)
-        VALUES
-          (1, 'Field 1', 1),
-          (2, 'Field 2', 1)
+        VALUES (1, 'Field 1', 1)
         ON CONFLICT (id) DO NOTHING;
 
         INSERT INTO water_qualities (farm_id, ph_level, tds, temperature)
         VALUES (1, 'N/A', 'N/A', 'N/A');
 
         INSERT INTO soil_moistures (farm_id, field_id, moisture_level, status)
-        VALUES
-          (1, 1, 0, 'danger'),
-          (1, 2, 0, 'danger');
+        VALUES (1, 1, 0, 'danger');
 
         SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
         SELECT setval('farms_id_seq', (SELECT MAX(id) FROM farms));
@@ -98,6 +94,14 @@ export async function initDb() {
       `);
       console.log("[db] Database seeded with demo farm data");
     }
+
+    // Remove Field 2 if it exists (only Field 1 is used)
+    await client.query(`
+      DELETE FROM soil_moistures WHERE field_id IN (
+        SELECT id FROM fields WHERE name = 'Field 2' AND farm_id = 1
+      );
+      DELETE FROM fields WHERE name = 'Field 2' AND farm_id = 1;
+    `);
 
     console.log("[db] Database tables ready");
   } finally {

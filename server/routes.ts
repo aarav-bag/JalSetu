@@ -588,6 +588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       farmId: z.number().int().positive(),
       fieldId: z.number().int().positive(),
       tds: z.number().min(0).optional(),          // TDS in ppm
+      ph: z.number().min(0).max(14).optional(),   // pH 0–14
       soilMoisture: z.number().min(0).max(100).optional(), // moisture %
       waterTemp: z.number().optional(),            // optional temperature °C
     });
@@ -600,16 +601,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Update in-memory status
     esp32LastSeen = new Date();
-    esp32LastData = { tds: data.tds, soilMoisture: data.soilMoisture };
+    esp32LastData = { tds: data.tds, soilMoisture: data.soilMoisture, ph: data.ph };
 
     const saved: Record<string, any> = {};
 
-    // Save TDS water quality reading (pH left as "N/A" until sensor replaced)
-    if (data.tds !== undefined) {
+    // Save water quality reading — uses real pH when available
+    if (data.tds !== undefined || data.ph !== undefined) {
       saved.waterQuality = await storage.createWaterQuality({
         farmId: data.farmId,
-        phLevel: "N/A",
-        tds: `${Math.round(data.tds)} ppm`,
+        phLevel: data.ph !== undefined ? data.ph.toFixed(1) : "N/A",
+        tds: data.tds !== undefined ? `${Math.round(data.tds)} ppm` : "N/A",
         temperature: data.waterTemp !== undefined ? `${data.waterTemp.toFixed(1)}°C` : "N/A",
       });
     }

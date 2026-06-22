@@ -256,16 +256,6 @@ export class DatabaseStorage implements IStorage {
       waterQuality: waterQuality ? [
         { name: "pH Level", value: waterQuality.phLevel, status: "Good", icon: "ph" },
         { name: "TDS", value: waterQuality.tds, unit: "ppm", status: "Good", icon: "tds" },
-        { name: "Temp", value: waterQuality.temperature, status: (() => {
-          const t = waterQuality.temperature;
-          if (!t || t === "N/A") return "No Sensor";
-          const v = parseFloat(t);
-          if (isNaN(v)) return "N/A";
-          if (v < 15) return "Cold";
-          if (v <= 25) return "Normal";
-          if (v <= 35) return "Warm";
-          return "Hot";
-        })(), icon: "temp" }
       ] : [],
       soilMoisture: (() => {
         // soilMoistureReadings[i] is the latest reading for fields[i]

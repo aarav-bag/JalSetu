@@ -566,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // In-memory status: tracks the last time the ESP32 sent data
   let esp32LastSeen: Date | null = null;
-  let esp32LastData: { tds?: number; soilMoisture?: number } = {};
+  let esp32LastData: { tds?: number; soilMoisture?: number; ph?: number } = {};
 
   // Status endpoint — frontend polls this to show online/offline badge
   app.get("/api/esp32/status", (req, res) => {

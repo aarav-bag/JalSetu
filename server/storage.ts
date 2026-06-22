@@ -230,8 +230,10 @@ export class DatabaseStorage implements IStorage {
     // Get farm fields and soil moisture
     const fields = await this.getFieldsByFarmId(farmId);
     
-    // Get soil moisture readings
-    const soilMoistureReadings = await this.getSoilMoisturesByFarmId(farmId);
+    // Get the LATEST soil moisture reading per field
+    const soilMoistureReadings = await Promise.all(
+      fields.map(f => this.getLatestSoilMoistureByFieldId(f.id))
+    );
     
     // Get latest weather prediction
     const weatherPrediction = await this.getLatestWeatherPredictionByFarmId(farmId);
@@ -256,20 +258,24 @@ export class DatabaseStorage implements IStorage {
         { name: "TDS", value: waterQuality.tds, unit: "ppm", status: "Good", icon: "tds" },
         { name: "Temp", value: waterQuality.temperature, status: "Warm", icon: "temp" }
       ] : [],
-      soilMoisture: {
-        level: 68, // Calculate the average moisture level
-        status: "Ideal Moisture Level",
-        fields: fields.map(field => {
-          // Find the latest soil moisture reading for this field
-          const fieldMoisture = soilMoistureReadings.find(sm => sm.fieldId === field.id);
-          return {
-            id: field.id,
-            name: field.name,
-            value: fieldMoisture?.moistureLevel || 0,
-            status: fieldMoisture?.status as "optimal" | "warning" | "danger" || "optimal"
-          };
-        })
-      },
+      soilMoisture: (() => {
+        // soilMoistureReadings[i] is the latest reading for fields[i]
+        const fieldRows = fields.map((field, i) => ({
+          id: field.id,
+          name: field.name,
+          value: soilMoistureReadings[i]?.moistureLevel ?? 0,
+          status: (soilMoistureReadings[i]?.status as "optimal" | "warning" | "danger") ?? "warning"
+        }));
+        const readings = fieldRows.filter(f => f.value > 0);
+        const avgLevel = readings.length
+          ? Math.round(readings.reduce((s, f) => s + f.value, 0) / readings.length)
+          : 0;
+        const overallStatus =
+          avgLevel >= 60 ? "Ideal Moisture Level"
+          : avgLevel >= 35 ? "Needs Attention"
+          : "Critically Low";
+        return { level: avgLevel, status: overallStatus, fields: fieldRows };
+      })(),
       waterPrediction: weatherPrediction ? {
         message: weatherPrediction.message,
         advice: weatherPrediction.advice,

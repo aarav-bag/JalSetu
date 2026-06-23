@@ -1,0 +1,152 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+// ─── WiFi credentials ─────────────────────────────────────
+const char* WIFI_SSID = "Ash Dxt";
+const char* WIFI_PASS = "Aarav@0603";
+
+// ─── JalSetu server ───────────────────────────────────────
+const char* SERVER_URL = "https://jalsetu-rbeg.onrender.com/api/esp32/sensor-data";
+const char* SECRET     = "JALSETU2024";
+const int   FARM_ID    = 1;
+const int   FIELD_ID   = 1;
+
+// ─── Sensor pins (all are ADC1 — safe to use with WiFi) ───
+#define PIN_TDS          34   // TDS sensor analog out
+#define PIN_PH           35   // pH sensor analog out
+#define PIN_SOIL         32   // Soil moisture analog out
+
+// ─── Soil calibration (measure these for your sensor) ─────
+#define SOIL_DRY         1700  // Raw ADC when sensor is in dry air
+#define SOIL_WET         600   // Raw ADC when sensor is in water
+
+// ─── Interval between uploads ─────────────────────────────
+const unsigned long INTERVAL_MS = 30000; // 30 seconds
+
+unsigned long lastSend = 0;
+
+// ══════════════════════════════════════════════════════════
+//  Read TDS  (returns ppm)
+// ══════════════════════════════════════════════════════════
+float readTDS() {
+  // Average 30 samples to reduce noise
+  long sum = 0;
+  for (int i = 0; i < 30; i++) {
+    sum += analogRead(PIN_TDS);
+    delay(10);
+  }
+  float rawAvg  = sum / 30.0;
+  float voltage = rawAvg * (3.3f / 4095.0f);   // ESP32 = 3.3V, 12-bit
+
+  // Temperature compensation at 25°C (adjust if you have a temp probe)
+  float tempCoeff = 1.0f + 0.02f * (25.0f - 25.0f); // = 1.0
+  float compVoltage = voltage / tempCoeff;
+
+  // Standard TDS formula for most TDS modules
+  float tds = (133.42f * compVoltage * compVoltage * compVoltage
+             - 255.86f * compVoltage * compVoltage
+             + 857.39f * compVoltage) * 0.5f;
+  return max(0.0f, tds);
+}
+
+// ══════════════════════════════════════════════════════════
+//  Read pH  (returns 0–14)
+// ══════════════════════════════════════════════════════════
+float readPH() {
+  long sum = 0;
+  for (int i = 0; i < 30; i++) {
+    sum += analogRead(PIN_PH);
+    delay(10);
+  }
+  float rawAvg  = sum / 30.0;
+  float voltage = rawAvg * (3.3f / 4095.0f);
+
+  // Most analog pH modules: pH 7 = ~2.5V, slope ≈ 0.1775V/pH unit
+  // Calibrate with pH 4 and pH 7 buffer solutions for accuracy
+  float ph = 7.0f + ((2.5f - voltage) / 0.1775f);
+  return constrain(ph, 0.0f, 14.0f);
+}
+
+// ══════════════════════════════════════════════════════════
+//  Read Soil Moisture  (returns 0–100 %)
+// ══════════════════════════════════════════════════════════
+float readSoil() {
+  long sum = 0;
+  for (int i = 0; i < 10; i++) {
+    sum += analogRead(PIN_SOIL);
+    delay(10);
+  }
+  float rawAvg = sum / 10.0;
+
+  // Map: SOIL_DRY → 0%, SOIL_WET → 100%
+  float pct = map((long)rawAvg, SOIL_DRY, SOIL_WET, 0, 100);
+  return constrain(pct, 0.0f, 100.0f);
+}
+
+// ══════════════════════════════════════════════════════════
+//  Send data to JalSetu
+// ══════════════════════════════════════════════════════════
+void sendToServer(float tds, float ph, float soil) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WiFi] Not connected — skipping upload");
+    return;
+  }
+
+  HTTPClient http;
+  http.begin(SERVER_URL);
+  http.addHeader("Content-Type", "application/json");
+
+  // Build JSON
+  StaticJsonDocument<256> doc;
+  doc["secret"]       = SECRET;
+  doc["farmId"]       = FARM_ID;
+  doc["fieldId"]      = FIELD_ID;
+  doc["tds"]          = (int)tds;
+  doc["ph"]           = round(ph * 10) / 10.0;
+  doc["soilMoisture"] = (int)soil;
+
+  String body;
+  serializeJson(doc, body);
+
+  Serial.println("[POST] " + body);
+  int code = http.POST(body);
+  Serial.printf("[Server] Response: %d\n", code);
+  http.end();
+}
+
+// ══════════════════════════════════════════════════════════
+//  Setup & Loop
+// ══════════════════════════════════════════════════════════
+void setup() {
+  Serial.begin(115200);
+
+  // Set ADC resolution (ESP32 default is 12-bit, just being explicit)
+  analogReadResolution(12);
+
+  // Connect to WiFi
+  Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.printf("\n[WiFi] Connected — IP: %s\n", WiFi.localIP().toString().c_str());
+}
+
+void loop() {
+  unsigned long now = millis();
+  if (now - lastSend < INTERVAL_MS) return;
+  lastSend = now;
+
+  float tds  = readTDS();
+  float ph   = readPH();
+  float soil = readSoil();
+
+  Serial.printf("[Sensors] TDS: %.0f ppm | pH: %.1f | Soil: %.0f%%\n", tds, ph, soil);
+  sendToServer(tds, ph, soil);
+}
+
+
+
+please save me i need to submit it please change the ph section to show readings from 7 to 7.5 to one decimal place only

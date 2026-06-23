@@ -1,4 +1,4 @@
-import { TestTube, Droplet, Scale, Thermometer, ArrowRight, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { TestTube, Droplet, Scale, Thermometer, ArrowRight, CheckCircle2, AlertTriangle, XCircle, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -7,7 +7,7 @@ interface QualityMetric {
   value: string | number;
   unit?: string;
   status: string;
-  icon: "ph" | "tds" | "temp";
+  icon: "ph" | "tds" | "temp" | "score";
 }
 
 interface WaterQualityCardProps {
@@ -22,8 +22,9 @@ const WaterQualityCard = ({ qualityMetrics = [], farmId = 1 }: WaterQualityCardP
     switch (icon) {
       case "ph":   return <Droplet className="h-5 w-5 text-blue-500 dark:text-blue-300" />;
       case "tds":  return <Scale className="h-5 w-5 text-purple-500 dark:text-purple-300" />;
-      case "temp": return <Thermometer className="h-5 w-5 text-orange-500 dark:text-orange-300" />;
-      default:     return <Droplet className="h-5 w-5 text-blue-500 dark:text-blue-300" />;
+      case "temp":  return <Thermometer className="h-5 w-5 text-orange-500 dark:text-orange-300" />;
+      case "score": return <ShieldCheck className="h-5 w-5 text-emerald-500 dark:text-emerald-300" />;
+      default:      return <Droplet className="h-5 w-5 text-blue-500 dark:text-blue-300" />;
     }
   };
 
@@ -31,8 +32,9 @@ const WaterQualityCard = ({ qualityMetrics = [], farmId = 1 }: WaterQualityCardP
     switch (icon) {
       case "ph":   return { bg: 'rgba(59,130,246,0.15)',  border: 'rgba(59,130,246,0.3)' };
       case "tds":  return { bg: 'rgba(168,85,247,0.15)',  border: 'rgba(168,85,247,0.3)' };
-      case "temp": return { bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.3)' };
-      default:     return { bg: 'rgba(59,130,246,0.15)',  border: 'rgba(59,130,246,0.3)' };
+      case "temp":  return { bg: 'rgba(249,115,22,0.15)',  border: 'rgba(249,115,22,0.3)' };
+      case "score": return { bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.3)' };
+      default:      return { bg: 'rgba(59,130,246,0.15)', border: 'rgba(59,130,246,0.3)' };
     }
   };
 

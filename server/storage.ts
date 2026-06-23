@@ -253,10 +253,22 @@ export class DatabaseStorage implements IStorage {
         location: farm.location,
         status: farm.status
       },
-      waterQuality: waterQuality ? [
-        { name: "pH Level", value: waterQuality.phLevel, status: "Good", icon: "ph" },
-        { name: "TDS", value: waterQuality.tds, unit: "ppm", status: "Good", icon: "tds" },
-      ] : [],
+      waterQuality: waterQuality ? (() => {
+        const ph  = parseFloat(waterQuality.phLevel ?? "7");
+        const tds = parseFloat((waterQuality.tds ?? "0").toString().replace(/[^\d.]/g, ""));
+        const phOk  = ph  >= 6.5 && ph  <= 8.5;
+        const tdsOk = tds >= 0   && tds <= 500;
+        const overall = (phOk && tdsOk)
+          ? { value: "Safe",   status: "Good",    label: "Good" }
+          : (!phOk && !tdsOk)
+            ? { value: "Poor",  status: "bad",     label: "Alert" }
+            : { value: "Fair",  status: "warning", label: "Warm" };
+        return [
+          { name: "pH Level", value: waterQuality.phLevel, status: "Good", icon: "ph" },
+          { name: "TDS", value: waterQuality.tds, unit: "ppm", status: "Good", icon: "tds" },
+          { name: "Quality", value: overall.value, status: overall.status, icon: "score" },
+        ];
+      })() : [],
       soilMoisture: (() => {
         // soilMoistureReadings[i] is the latest reading for fields[i]
         const fieldRows = fields.map((field, i) => ({

@@ -226,8 +226,15 @@ export default function HelpChatbot() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen flex flex-col relative transition-colors duration-300"
-      style={{ background: 'var(--app-bg, linear-gradient(180deg, #f8fafc, #eff6ff))' }}>
+    <div className="max-w-md mx-auto h-screen flex flex-col relative overflow-hidden transition-colors duration-500">
+      {/* Background */}
+      <div className="fixed inset-0 -z-10 page-bg transition-colors duration-500" />
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="orb top-[-80px] left-[-60px] w-72 h-72 bg-blue-400 opacity-20 dark:opacity-25" />
+        <div className="orb top-[30%] right-[-80px] w-64 h-64 bg-cyan-300 opacity-15 dark:opacity-20" />
+        <div className="orb bottom-[-60px] right-[20%] w-72 h-72 bg-indigo-400 opacity-15 dark:opacity-20" />
+      </div>
+
       {/* Header */}
       <header className="px-5 pt-10 pb-3 relative z-10 flex-shrink-0">
         <div className="flex items-center justify-between">

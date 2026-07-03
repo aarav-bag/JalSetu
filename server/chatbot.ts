@@ -36,7 +36,7 @@ export async function handleChatRequest(req: Request, res: Response) {
     }
     
     // Create a model instance using the correct model name for Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
     // Format for history in Gemini API
     const formattedHistory = history.map((msg: { role: string; content: string }) => ({

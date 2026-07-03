@@ -7,10 +7,7 @@ import { insertUserSchema, insertFarmSchema, insertFieldSchema, insertWaterQuali
 import passport from "passport";
 import { setupAuth, isAuthenticated, hashPassword } from "./auth";
 import { handleChatRequest } from "./chatbot";
-import { handlePerplexityChat } from "./perplexity";
 import { handleLocalChat } from "./localChatbot";
-import { handleEdenAIChat } from "./edenAI";
-import { handleOpenAIChat } from "./openaiChatbot";
 import { fetchRealWeather, fetchDefaultWeather } from "./weather";
 import { generateRecommendations } from "./recommendations";
 
@@ -629,45 +626,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(201).json({ success: true, saved });
   }));
 
-  // Chatbot API endpoint - with multiple AI provider support
+  // Chatbot API endpoint — Gemini (free tier) with local knowledge-base fallback
   app.post("/api/chat", asyncHandler(async (req, res) => {
-    const { provider = "openai" } = req.body;
-    
     try {
-      switch (provider.toLowerCase()) {
-        case "openai":
-        case "chatgpt":
-          await handleOpenAIChat(req, res);
-          break;
-        case "gemini":
-          await handleChatRequest(req, res);
-          break;
-        case "perplexity":
-          await handlePerplexityChat(req, res);
-          break;
-        case "eden":
-        case "edenai":
-          await handleEdenAIChat(req, res);
-          break;
-        case "local":
-          await handleLocalChat(req, res);
-          break;
-        default:
-          // Default to OpenAI if provider not specified or recognized
-          await handleOpenAIChat(req, res);
-      }
+      await handleChatRequest(req, res);
     } catch (error) {
-      console.error(`Chat provider ${provider} failed:`, error);
-      // Fallback to local knowledge base
+      console.error("Gemini chat failed, falling back to local knowledge base:", error);
       await handleLocalChat(req, res);
     }
   }));
 
-  // Specific provider endpoints for direct access
-  app.post("/api/chat/openai", asyncHandler(handleOpenAIChat));
-  app.post("/api/chat/gemini", asyncHandler(handleChatRequest));
-  app.post("/api/chat/perplexity", asyncHandler(handlePerplexityChat));
-  app.post("/api/chat/eden", asyncHandler(handleEdenAIChat));
   app.post("/api/chat/local", asyncHandler(handleLocalChat));
 
   const httpServer = createServer(app);

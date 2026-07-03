@@ -286,7 +286,7 @@ export default function HelpChatbot() {
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 px-4 py-2 overflow-y-auto">
+      <div className="flex-1 min-h-0 px-4 py-2 overflow-y-auto">
         <div className="space-y-4 pb-4">
           {messages.map((message) => (
             <div

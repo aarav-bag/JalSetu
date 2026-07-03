@@ -95,13 +95,16 @@ export async function initDb() {
       console.log("[db] Database seeded with demo farm data");
     }
 
-    // Remove Field 2 if it exists (only Field 1 is used)
-    await client.query(`
-      DELETE FROM soil_moistures WHERE field_id IN (
-        SELECT id FROM fields WHERE name = 'Field 2' AND farm_id = 1
-      );
-      DELETE FROM fields WHERE name = 'Field 2' AND farm_id = 1;
-    `);
+    // Ensure Field 2 exists (farm now has two soil moisture sensors)
+    const { rows: field2Rows } = await client.query(
+      "SELECT id FROM fields WHERE name = 'Field 2' AND farm_id = 1"
+    );
+    if (field2Rows.length === 0) {
+      await client.query(`
+        INSERT INTO fields (name, farm_id) VALUES ('Field 2', 1);
+      `);
+      console.log("[db] Field 2 added");
+    }
 
     console.log("[db] Database tables ready");
   } finally {

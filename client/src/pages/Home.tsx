@@ -8,7 +8,9 @@ import RecommendationsCard from "@/components/RecommendationsCard";
 import BottomNavigation from "@/components/BottomNavigation";
 import PageShell from "@/components/PageShell";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { Esp32SetupScreen } from "@/components/Esp32SetupScreen";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { useEsp32Setup } from "@/hooks/useEsp32Setup";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Cpu, Wifi, WifiOff } from "lucide-react";
@@ -113,12 +115,18 @@ const Esp32Badge = () => {
 const Home = () => {
   const { data: farmData, isLoading } = useQuery<FarmData>({ queryKey: ["/api/user-dashboard"] });
   const { user } = useAuth();
+  const { showSetup, completeSetup } = useEsp32Setup(user?.id);
   const { showTour, completeTour } = useOnboarding();
 
   return (
     <PageShell>
+      {/* ESP32 setup always runs first on every login */}
       <AnimatePresence>
-        {showTour && <OnboardingTour onComplete={completeTour} />}
+        {showSetup && <Esp32SetupScreen onComplete={completeSetup} />}
+      </AnimatePresence>
+      {/* Onboarding tour only shows after setup is dismissed, and only on first login */}
+      <AnimatePresence>
+        {!showSetup && showTour && <OnboardingTour onComplete={completeTour} />}
       </AnimatePresence>
       <Header />
       <main className="flex-1 px-4 pt-1 pb-28 overflow-y-auto z-10">

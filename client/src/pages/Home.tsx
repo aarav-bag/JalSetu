@@ -7,10 +7,13 @@ import SmartIrrigationTipCard from "@/components/SmartIrrigationTipCard";
 import RecommendationsCard from "@/components/RecommendationsCard";
 import BottomNavigation from "@/components/BottomNavigation";
 import PageShell from "@/components/PageShell";
+import { OnboardingTour } from "@/components/OnboardingTour";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Cpu, Wifi, WifiOff } from "lucide-react";
 import { useRef, useEffect } from "react";
+import { AnimatePresence } from "framer-motion";
 
 interface FarmData {
   farmer: { id: number; name: string };
@@ -110,9 +113,13 @@ const Esp32Badge = () => {
 const Home = () => {
   const { data: farmData, isLoading } = useQuery<FarmData>({ queryKey: ["/api/user-dashboard"] });
   const { user } = useAuth();
+  const { showTour, completeTour } = useOnboarding();
 
   return (
     <PageShell>
+      <AnimatePresence>
+        {showTour && <OnboardingTour onComplete={completeTour} />}
+      </AnimatePresence>
       <Header />
       <main className="flex-1 px-4 pt-1 pb-28 overflow-y-auto z-10">
         {isLoading ? (

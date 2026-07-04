@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, User, Languages, Bell, HelpCircle, LogOut, ChevronRight, Moon, Sun, Sparkles, MapPin } from "lucide-react";
+import { Settings as SettingsIcon, User, Languages, Bell, HelpCircle, LogOut, ChevronRight, Moon, Sun, Sparkles, MapPin, BookOpen } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import BottomNavigation from "@/components/BottomNavigation";
 import PageShell from "@/components/PageShell";
@@ -11,6 +11,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useUserLocation } from "@/context/LocationContext";
 import LocationPicker from "@/components/LocationPicker";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { OnboardingTour } from "@/components/OnboardingTour";
+import { AnimatePresence } from "framer-motion";
 
 const Settings = () => {
   const { darkMode, toggleDarkMode, animationsEnabled, toggleAnimations } = useTheme();
@@ -21,6 +23,7 @@ const Settings = () => {
   const { language, setLanguage, t, availableLanguages } = useLanguage();
   const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const { location: userLocation, isSet: locationIsSet } = useUserLocation();
 
   const handleLogout = () => {
@@ -32,7 +35,21 @@ const Settings = () => {
     });
   };
 
-  const settingsSections = [
+  type SettingsItem = {
+    id: string;
+    label: string;
+    icon: React.ReactNode;
+    action: React.ReactNode;
+    subtext?: string;
+    onClick?: () => void;
+  };
+
+  type SettingsSection = {
+    title: string;
+    items: SettingsItem[];
+  };
+
+  const settingsSections: SettingsSection[] = [
     {
       title: t.account,
       items: [
@@ -98,6 +115,13 @@ const Settings = () => {
     {
       title: t.support,
       items: [
+        {
+          id: "tour", label: "Farm Metrics Guide",
+          icon: <BookOpen className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />,
+          subtext: "Learn what pH, TDS & soil moisture mean",
+          action: <ChevronRight className="h-5 w-5 text-gray-400 dark:text-white/30" />,
+          onClick: () => setShowTour(true),
+        },
         {
           id: "help", label: t.helpFaq,
           icon: <HelpCircle className="h-5 w-5 text-amber-500 dark:text-amber-400" />,
@@ -261,6 +285,9 @@ const Settings = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AnimatePresence>
+        {showTour && <OnboardingTour onComplete={() => setShowTour(false)} />}
+      </AnimatePresence>
     </PageShell>
   );
 };

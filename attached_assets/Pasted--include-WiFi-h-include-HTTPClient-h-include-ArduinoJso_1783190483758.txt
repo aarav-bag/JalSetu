@@ -1,0 +1,156 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+// ─── WiFi credentials ─────────────────────────────────────
+const char* WIFI_SSID = "Ash Dxt";
+const char* WIFI_PASS = "Aarav@0603";
+
+// ─── JalSetu server ───────────────────────────────────────
+const char* SERVER_URL = "https://jalsetu-rbeg.onrender.com/api/esp32/sensor-data";
+const char* SECRET     = "JALSETU2024";
+const int   FARM_ID    = 1;
+
+// ─── Sensor pins (GPIO 35 avoided — not accessible) ────────
+#define PIN_TDS          34   // TDS sensor analog out
+#define PIN_SOIL_FIELD1  32   // Soil moisture sensor — Field 1
+#define PIN_SOIL_FIELD2  36   // Soil moisture sensor — Field 2 (VP pin)
+
+// ─── LED indicator ────────────────────────────────────────
+#define PIN_LED          2    // Onboard LED (GPIO2)
+
+// ─── Soil calibration — measure these for EACH sensor ──────
+#define SOIL1_DRY        4095
+#define SOIL1_WET        500
+#define SOIL2_DRY        4095   // recalibrate for your 2nd sensor
+#define SOIL2_WET        1100    // recalibrate for your 2nd sensor
+
+// ─── Interval between uploads ─────────────────────────────
+const unsigned long INTERVAL_MS = 30000; // 30 seconds
+
+unsigned long lastSend = 0;
+
+// ══════════════════════════════════════════════════════════
+//  Read TDS  (returns ppm)
+// ══════════════════════════════════════════════════════════
+float readTDS() {
+  long sum = 0;
+  for (int i = 0; i < 30; i++) {
+    sum += analogRead(PIN_TDS);
+    delay(10);
+  }
+  float rawAvg  = sum / 30.0;
+  float voltage = rawAvg * (3.3f / 4095.0f);
+
+  float tds = (133.42f * voltage * voltage * voltage
+             - 255.86f * voltage * voltage
+             + 857.39f * voltage) * 0.5f;
+  return max(0.0f, tds);
+}
+
+// ══════════════════════════════════════════════════════════
+//  Read pH  (simulated neutral water — 7.0 to 7.5)
+// ══════════════════════════════════════════════════════════
+float readPH() {
+  float options[] = {7.0, 7.1, 7.2, 7.3, 7.4, 7.5};
+  int idx = random(0, 6);
+  return options[idx];
+}
+
+// ══════════════════════════════════════════════════════════
+//  Read Soil Moisture for a given pin + calibration (0–100%)
+// ══════════════════════════════════════════════════════════
+float readSoil(int pin, int dryVal, int wetVal) {
+  long sum = 0;
+  for (int i = 0; i < 10; i++) {
+    sum += analogRead(pin);
+    delay(10);
+  }
+  float rawAvg = sum / 10.0;
+  float pct = (float)(dryVal - rawAvg) / (dryVal - wetVal) * 100.0f;
+  return constrain(pct, 0.0f, 100.0f);
+}
+
+// ══════════════════════════════════════════════════════════
+//  LED helper — blink briefly while sending
+// ══════════════════════════════════════════════════════════
+void blinkLed() {
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(PIN_LED, LOW);
+    delay(100);
+    digitalWrite(PIN_LED, HIGH);
+    delay(100);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  Send one field's data to JalSetu
+// ══════════════════════════════════════════════════════════
+void sendToServer(int fieldId, float tds, float ph, float soil) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WiFi] Not connected — skipping upload");
+    return;
+  }
+
+  HTTPClient http;
+  http.begin(SERVER_URL);
+  http.addHeader("Content-Type", "application/json");
+
+  StaticJsonDocument<256> doc;
+  doc["secret"]       = SECRET;
+  doc["farmId"]       = FARM_ID;
+  doc["fieldId"]      = fieldId;
+  doc["tds"]          = (int)tds;
+  doc["ph"]           = ph;
+  doc["soilMoisture"] = (int)soil;
+
+  String body;
+  serializeJson(doc, body);
+
+  Serial.println("[POST] " + body);
+  int code = http.POST(body);
+  Serial.printf("[Server] Field %d Response: %d\n", fieldId, code);
+  http.end();
+}
+
+// ══════════════════════════════════════════════════════════
+//  Setup & Loop
+// ══════════════════════════════════════════════════════════
+void setup() {
+  Serial.begin(115200);
+  randomSeed(analogRead(33));
+  analogReadResolution(12);
+
+  pinMode(PIN_LED, OUTPUT);
+  digitalWrite(PIN_LED, LOW);   // OFF while connecting
+
+  Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.printf("\n[WiFi] Connected — IP: %s\n", WiFi.localIP().toString().c_str());
+
+  digitalWrite(PIN_LED, HIGH);  // ON solid = idle, connected, code running
+}
+
+void loop() {
+  unsigned long now = millis();
+  if (now - lastSend < INTERVAL_MS) return;
+  lastSend = now;
+
+  float tds = readTDS();
+  float ph  = readPH();
+  float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
+  float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
+
+  Serial.printf("[Sensors] TDS: %.0f ppm | pH: %.1f | F1 Soil: %.0f%% | F2 Soil: %.0f%%\n",
+                tds, ph, soil1, soil2);
+
+  blinkLed();                          // blink WHILE sending
+  sendToServer(1, tds, ph, soil1);      // Field 1
+  sendToServer(2, tds, ph, soil2);      // Field 2
+
+  digitalWrite(PIN_LED, HIGH);          // back to solid ON = idle
+}

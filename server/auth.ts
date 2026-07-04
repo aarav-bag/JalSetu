@@ -44,7 +44,7 @@ export function setupAuth(app: Express) {
           id: 1,
           username: 'aarav',
           firstName: 'Aarav',
-          lastName: 'Sharma',
+          lastName: 'Dixit',
           email: 'aarav@jalsetu.app',
           password: 'hashed_password',
           createdAt: new Date().toISOString()

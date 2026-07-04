@@ -42,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: 1,
         username: 'aarav',
         firstName: 'Aarav',
-        lastName: 'Sharma',
+        lastName: 'Dixit',
         email: 'aarav@jalsetu.app',
         createdAt: new Date().toISOString()
       };
@@ -86,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: 1,
         username: 'aarav',
         firstName: 'Aarav',
-        lastName: 'Sharma',
+        lastName: 'Dixit',
         email: 'aarav@jalsetu.app',
         createdAt: new Date().toISOString(),
       };

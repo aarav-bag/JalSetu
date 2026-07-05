@@ -420,6 +420,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ level: avgLevel, status: overallStatus, fields: fieldReadings, history, fieldNames: fields.map(f => f.name), hasAnyData: readingsWithData.length > 0 });
   }));
 
+  // ── Real-time alerts ────────────────────────────────────────────
+  // Generate deterministic alert objects from live sensor readings.
+  // IDs are stable (condition-based) so the client can track dismissals.
+  function generateAlertsFromDashboard(dashboard: any): Array<{
+    id: string; title: string; message: string;
+    type: "info" | "warning" | "danger"; time: string;
+  }> {
+    type AlertItem = { id: string; title: string; message: string; type: "info" | "warning" | "danger"; time: string };
+    const alerts: AlertItem[] = [];
+    const timeStr = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+    const wq: any[] = dashboard?.waterQuality ?? [];
+    const sm: any  = dashboard?.soilMoisture;
+
+    // ── Water Quality ──
+    if (wq.length > 0) {
+      const phEntry  = wq.find((m: any) => m.icon === "ph");
+      const tdsEntry = wq.find((m: any) => m.icon === "tds");
+
+      if (phEntry) {
+        const ph = parseFloat(String(phEntry.value));
+        if (!isNaN(ph)) {
+          if (ph < 6.0)
+            alerts.push({ id: "ph-danger-low",  title: "Critical pH — Too Acidic",    message: `Water pH is ${ph} — dangerously acidic. Do not irrigate until corrected.`, type: "danger",  time: timeStr });
+          else if (ph > 9.0)
+            alerts.push({ id: "ph-danger-high", title: "Critical pH — Too Alkaline",  message: `Water pH is ${ph} — dangerously alkaline. Do not irrigate until corrected.`, type: "danger", time: timeStr });
+          else if (ph < 6.5)
+            alerts.push({ id: "ph-warning-low", title: "pH Level Low",                message: `Water pH is ${ph} — slightly below the safe 6.5–8.5 range. Monitor closely.`, type: "warning", time: timeStr });
+          else if (ph > 8.5)
+            alerts.push({ id: "ph-warning-high",title: "pH Level High",               message: `Water pH is ${ph} — slightly above the safe 6.5–8.5 range. Monitor closely.`, type: "warning", time: timeStr });
+        }
+      }
+
+      if (tdsEntry) {
+        const tdsNum = parseFloat(String(tdsEntry.value).replace(/[^\d.]/g, ""));
+        if (!isNaN(tdsNum)) {
+          if (tdsNum > 1000)
+            alerts.push({ id: "tds-danger",   title: "Critical TDS Level", message: `TDS is ${tdsNum} ppm — extremely high. Avoid irrigation until water quality improves.`, type: "danger",  time: timeStr });
+          else if (tdsNum > 500)
+            alerts.push({ id: "tds-warning",  title: "High TDS Level",     message: `TDS is ${tdsNum} ppm — above the safe 500 ppm limit. May affect crop health.`, type: "warning", time: timeStr });
+        }
+      }
+    } else {
+      alerts.push({ id: "wq-no-data", title: "No Water Quality Data", message: "No pH or TDS readings yet. Connect your ESP32 to start water quality monitoring.", type: "info", time: timeStr });
+    }
+
+    // ── Soil Moisture ──
+    const hasAnySoilReading = sm?.fields?.some((f: any) => f.hasReading);
+    if (!sm || !hasAnySoilReading) {
+      alerts.push({ id: "soil-no-data", title: "No Soil Moisture Data", message: "No soil moisture readings yet. Connect your ESP32 to start field monitoring.", type: "info", time: timeStr });
+    } else {
+      for (const field of (sm.fields ?? [])) {
+        if (!field.hasReading) continue;
+        if (field.value < 35)
+          alerts.push({ id: `soil-field-${field.id}-danger`,  title: `Critically Dry: ${field.name}`, message: `${field.name} is at ${field.value}% moisture — critically low. Irrigate immediately to prevent crop loss.`, type: "danger",  time: timeStr });
+        else if (field.value < 60)
+          alerts.push({ id: `soil-field-${field.id}-warning`, title: `Low Moisture: ${field.name}`,   message: `${field.name} is at ${field.value}% — below the optimal 60–80% range. Schedule irrigation soon.`, type: "warning", time: timeStr });
+      }
+    }
+
+    return alerts;
+  }
+
+  // GET /api/my-alerts — authenticated, returns alerts for the user's first farm
+  app.get("/api/my-alerts", isAuthenticated, asyncHandler(async (req, res) => {
+    const userId = (req.user as any).id;
+    const farms  = await storage.getFarmsByUserId(userId);
+    if (!farms.length) return res.json({ alerts: [], generatedAt: new Date().toISOString(), farmId: null });
+
+    const farmId   = farms[0].id;
+    const dashboard = await storage.getFarmDashboardData(farmId);
+    const alerts   = generateAlertsFromDashboard(dashboard);
+
+    res.json({ alerts, generatedAt: new Date().toISOString(), farmId });
+  }));
+
   // Water quality history for details page
   app.get("/api/farm/:id/water-quality", isAuthenticated, asyncHandler(async (req, res) => {
     const farmId = parseInt(req.params.id);

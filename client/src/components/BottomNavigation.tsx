@@ -1,10 +1,31 @@
 import { Home, BarChart2, Bell, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+
+function useAlertBadge() {
+  const { user } = useAuth();
+  const { data } = useQuery<{ alerts: { id: string }[] }>({
+    queryKey: ["/api/my-alerts"],
+    refetchInterval: 30_000,
+    enabled: !!user,
+  });
+  if (!data?.alerts?.length) return 0;
+  try {
+    const dismissed = new Set<string>(
+      JSON.parse(localStorage.getItem(`jalsetu_dismissed_alerts_${user?.id ?? "anon"}`) || "[]")
+    );
+    return data.alerts.filter(a => !dismissed.has(a.id)).length;
+  } catch {
+    return data.alerts.length;
+  }
+}
 
 const BottomNavigation = () => {
   const [location, navigate] = useLocation();
   const { t } = useLanguage();
+  const alertCount = useAlertBadge();
 
   const navItems = [
     { name: t.home, icon: Home, path: "/" },
@@ -25,7 +46,7 @@ const BottomNavigation = () => {
               className="flex flex-col items-center gap-1 cursor-pointer group bg-transparent border-0 p-0"
               aria-label={item.name}
             >
-              <div className={`p-2.5 rounded-2xl transition-all duration-300 ${
+              <div className={`relative p-2.5 rounded-2xl transition-all duration-300 ${
                 isActive
                   ? 'bg-gradient-to-br from-blue-500/90 to-cyan-500/90 shadow-lg shadow-blue-500/30 scale-110 border border-white/30'
                   : 'hover:bg-white/20 dark:hover:bg-white/15 hover:scale-105'
@@ -35,6 +56,11 @@ const BottomNavigation = () => {
                     ? 'text-white'
                     : 'text-gray-500 dark:text-white/50 group-hover:text-gray-700 dark:group-hover:text-white/80'
                 }`} />
+                {item.path === "/alerts" && alertCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center shadow">
+                    {alertCount > 9 ? "9+" : alertCount}
+                  </span>
+                )}
               </div>
               <span className={`text-[10px] font-semibold tracking-wide transition-colors duration-200 ${
                 isActive

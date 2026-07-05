@@ -21,6 +21,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import { LocationProvider } from "./context/LocationContext";
 import { useAuth } from "./hooks/useAuth";
+import { AlertNotificationManager } from "./components/AlertNotificationManager";
 
 function PageTransition({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -84,6 +85,7 @@ function App() {
       <LanguageProvider>
         <ThemeProvider>
           <LocationProvider>
+            <AlertNotificationManager />
             <Router />
             <Toaster />
           </LocationProvider>

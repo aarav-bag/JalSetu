@@ -7,6 +7,7 @@ interface FieldReading {
   name: string;
   value: number;
   status: "optimal" | "warning" | "danger";
+  hasReading?: boolean;
 }
 
 interface SoilMoistureCardProps {
@@ -24,9 +25,9 @@ const SoilMoistureCard = ({
 }: SoilMoistureCardProps) => {
   const { t } = useLanguage();
 
-  // True "no data" = no field has a real reading above 0
-  // fieldReadings can be non-empty with all zeros when the DB has fields but no ESP32 readings yet
-  const hasData = fieldReadings.some(f => f.value > 0) || moistureLevel > 0;
+  // hasReading flag (set by server) is the authoritative presence check.
+  // Fall back to value > 0 for older API responses that don't include hasReading.
+  const hasData = fieldReadings.some(f => f.hasReading ?? f.value > 0);
 
   const displayLevel = moistureLevel;
   const circumference = 2 * Math.PI * 36;
@@ -105,7 +106,7 @@ const SoilMoistureCard = ({
                 <p className="text-sm font-semibold card-heading mb-1 truncate">{moistureStatus}</p>
                 <p className="text-xs card-body mb-3 leading-relaxed">Levels within recommended range for optimal crop growth.</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {fieldReadings.map((field) => {
+                  {fieldReadings.filter(f => f.hasReading ?? f.value > 0).map((field) => {
                     const pill = getPillStyle(field.status);
                     return (
                       <span key={field.id} className={`px-2.5 py-1 rounded-xl text-xs font-semibold ${pill.colorClass}`}

@@ -291,18 +291,24 @@ export class DatabaseStorage implements IStorage {
       })() : [],
       soilMoisture: (() => {
         // soilMoistureReadings[i] is the latest reading for fields[i]
-        const fieldRows = fields.map((field, i) => ({
-          id: field.id,
-          name: field.name,
-          value: soilMoistureReadings[i]?.moistureLevel ?? 0,
-          status: (soilMoistureReadings[i]?.status as "optimal" | "warning" | "danger") ?? "warning"
-        }));
-        const readings = fieldRows.filter(f => f.value > 0);
-        const avgLevel = readings.length
-          ? Math.round(readings.reduce((s, f) => s + f.value, 0) / readings.length)
+        // hasReading = false means no ESP32 data has ever arrived for that field
+        const fieldRows = fields.map((field, i) => {
+          const reading = soilMoistureReadings[i];
+          return {
+            id: field.id,
+            name: field.name,
+            value: reading?.moistureLevel ?? 0,
+            status: (reading?.status as "optimal" | "warning" | "danger") ?? "warning",
+            hasReading: reading !== undefined,
+          };
+        });
+        const readingsWithData = fieldRows.filter(f => f.hasReading);
+        const avgLevel = readingsWithData.length
+          ? Math.round(readingsWithData.reduce((s, f) => s + f.value, 0) / readingsWithData.length)
           : 0;
         const overallStatus =
-          avgLevel >= 60 ? "Ideal Moisture Level"
+          readingsWithData.length === 0 ? "No Data"
+          : avgLevel >= 60 ? "Ideal Moisture Level"
           : avgLevel >= 35 ? "Needs Attention"
           : "Critically Low";
         return { level: avgLevel, status: overallStatus, fields: fieldRows };

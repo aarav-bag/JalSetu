@@ -21,7 +21,7 @@ interface FarmData {
   farmer: { id: number; name: string };
   farm: { id: number; name?: string; status: string };
   waterQuality: Array<{ name: string; value: string | number; unit?: string; status: string; icon: "ph" | "tds" | "temp" }>;
-  soilMoisture: { level: number; status: string; fields: Array<{ id: number; name: string; value: number; status: "optimal" | "warning" | "danger" }> };
+  soilMoisture: { level: number; status: string; fields: Array<{ id: number; name: string; value: number; status: "optimal" | "warning" | "danger"; hasReading?: boolean }> };
   waterPrediction: { message: string; advice: string; forecast: Array<{ day: string; temperature: string; weather: "sunny" | "cloudy" | "rainy" | "partly-cloudy"; rainChance?: number }> };
   irrigationTip: string;
 }
@@ -150,9 +150,9 @@ const Home = () => {
               farmId={farmData?.farm?.id}
             />
             <SoilMoistureCard
-              moistureLevel={farmData?.soilMoisture?.level || 0}
-              moistureStatus={farmData?.soilMoisture?.status || ""}
-              fieldReadings={farmData?.soilMoisture?.fields || []}
+              moistureLevel={farmData?.soilMoisture?.level ?? 0}
+              moistureStatus={farmData?.soilMoisture?.status ?? ""}
+              fieldReadings={farmData?.soilMoisture?.fields ?? []}
               farmId={farmData?.farm?.id}
             />
             <WaterPredictionCard farmId={farmData?.farm?.id} />

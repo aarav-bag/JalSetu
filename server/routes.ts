@@ -491,9 +491,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const farmId   = farms[0].id;
     const dashboard = await storage.getFarmDashboardData(farmId);
-    const alerts   = generateAlertsFromDashboard(dashboard);
+    const currentAlerts = generateAlertsFromDashboard(dashboard);
+    const currentKeys   = new Set(currentAlerts.map(a => a.id));
 
-    res.json({ alerts, generatedAt: new Date().toISOString(), farmId });
+    // Load currently open alerts from DB
+    const openDbAlerts = await storage.getOpenAlerts(farmId);
+    const openKeys     = new Set(openDbAlerts.map(a => a.alertKey));
+
+    // Persist newly triggered alerts (conditions that weren't open before)
+    await Promise.all(
+      currentAlerts
+        .filter(a => !openKeys.has(a.id))
+        .map(a => storage.createFarmAlert({
+          farmId,
+          alertKey: a.id,
+          title: a.title,
+          message: a.message,
+          type: a.type,
+        }))
+    );
+
+    // Resolve alerts whose conditions are no longer active
+    await Promise.all(
+      openDbAlerts
+        .filter(a => !currentKeys.has(a.alertKey))
+        .map(a => storage.resolveAlert(a.id))
+    );
+
+    // Fetch fresh state after mutations
+    const [activeAlerts, historyRows] = await Promise.all([
+      storage.getOpenAlerts(farmId),
+      storage.getAlertHistory(farmId, 60),
+    ]);
+
+    const fmt = (d: Date | null | undefined) =>
+      d ? new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: true }) : null;
+
+    const alerts = activeAlerts.map(a => ({
+      id: a.alertKey,
+      dbId: a.id,
+      title: a.title,
+      message: a.message,
+      type: a.type as "info" | "warning" | "danger",
+      time: fmt(a.createdAt) ?? "Just now",
+      isResolved: false,
+    }));
+
+    const history = historyRows
+      .filter(a => a.isResolved)
+      .map(a => ({
+        id: a.alertKey,
+        dbId: a.id,
+        title: a.title,
+        message: a.message,
+        type: a.type as "info" | "warning" | "danger",
+        triggeredAt: fmt(a.createdAt),
+        resolvedAt: fmt(a.resolvedAt),
+        isResolved: true,
+      }));
+
+    res.json({ alerts, history, generatedAt: new Date().toISOString(), farmId });
   }));
 
   // Water quality history for details page

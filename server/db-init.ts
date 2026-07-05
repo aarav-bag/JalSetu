@@ -64,6 +64,18 @@ export async function initDb() {
         tip TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT NOW() NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS farm_alerts (
+        id SERIAL PRIMARY KEY,
+        farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+        alert_key TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        type TEXT NOT NULL,
+        is_resolved BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        resolved_at TIMESTAMP
+      );
     `);
 
     // Seed demo data if no users exist yet

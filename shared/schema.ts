@@ -73,6 +73,19 @@ export const irrigationTips = pgTable("irrigation_tips", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Farm Alerts schema — persisted history of triggered sensor alerts
+export const farmAlerts = pgTable("farm_alerts", {
+  id: serial("id").primaryKey(),
+  farmId: integer("farm_id").notNull().references(() => farms.id, { onDelete: "cascade" }),
+  alertKey: text("alert_key").notNull(),       // deterministic id e.g. "ph-danger-low"
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull(),                // "info" | "warning" | "danger"
+  isResolved: boolean("is_resolved").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
 // Define relations after all tables are defined
 export const usersRelations = relations(users, ({ many }) => ({
   farms: many(farms),
@@ -198,3 +211,12 @@ export type WeatherPrediction = typeof weatherPredictions.$inferSelect;
 
 export type InsertIrrigationTip = z.infer<typeof insertIrrigationTipSchema>;
 export type IrrigationTip = typeof irrigationTips.$inferSelect;
+
+export type InsertFarmAlert = {
+  farmId: number;
+  alertKey: string;
+  title: string;
+  message: string;
+  type: string;
+};
+export type FarmAlert = typeof farmAlerts.$inferSelect;

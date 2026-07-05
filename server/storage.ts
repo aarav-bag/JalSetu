@@ -5,7 +5,8 @@ import {
   waterQualities, type WaterQuality, type InsertWaterQuality,
   soilMoistures, type SoilMoisture, type InsertSoilMoisture,
   weatherPredictions, type WeatherPrediction, type InsertWeatherPrediction,
-  irrigationTips, type IrrigationTip, type InsertIrrigationTip
+  irrigationTips, type IrrigationTip, type InsertIrrigationTip,
+  farmAlerts, type FarmAlert, type InsertFarmAlert
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -55,6 +56,13 @@ export interface IStorage {
   
   // Dashboard data method
   getFarmDashboardData(farmId: number): Promise<any>;
+
+  // Farm Alert methods
+  getOpenAlerts(farmId: number): Promise<FarmAlert[]>;
+  getAlertByKey(farmId: number, alertKey: string): Promise<FarmAlert | undefined>;
+  createFarmAlert(alert: InsertFarmAlert): Promise<FarmAlert>;
+  resolveAlert(id: number): Promise<void>;
+  getAlertHistory(farmId: number, limit?: number): Promise<FarmAlert[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -324,6 +332,50 @@ export class DatabaseStorage implements IStorage {
       },
       irrigationTip: irrigationTip?.tip || "No irrigation tips available yet. Check back soon!"
     };
+  }
+
+  // ── Farm Alert methods ──────────────────────────────────────────
+
+  async getOpenAlerts(farmId: number): Promise<FarmAlert[]> {
+    return await db
+      .select()
+      .from(farmAlerts)
+      .where(and(eq(farmAlerts.farmId, farmId), eq(farmAlerts.isResolved, false)))
+      .orderBy(desc(farmAlerts.createdAt));
+  }
+
+  async getAlertByKey(farmId: number, alertKey: string): Promise<FarmAlert | undefined> {
+    const [row] = await db
+      .select()
+      .from(farmAlerts)
+      .where(and(
+        eq(farmAlerts.farmId, farmId),
+        eq(farmAlerts.alertKey, alertKey),
+        eq(farmAlerts.isResolved, false)
+      ))
+      .limit(1);
+    return row;
+  }
+
+  async createFarmAlert(alert: InsertFarmAlert): Promise<FarmAlert> {
+    const [row] = await db.insert(farmAlerts).values(alert).returning();
+    return row;
+  }
+
+  async resolveAlert(id: number): Promise<void> {
+    await db
+      .update(farmAlerts)
+      .set({ isResolved: true, resolvedAt: new Date() })
+      .where(eq(farmAlerts.id, id));
+  }
+
+  async getAlertHistory(farmId: number, limit = 50): Promise<FarmAlert[]> {
+    return await db
+      .select()
+      .from(farmAlerts)
+      .where(eq(farmAlerts.farmId, farmId))
+      .orderBy(desc(farmAlerts.createdAt))
+      .limit(limit);
   }
 }
 

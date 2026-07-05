@@ -3,14 +3,28 @@ import { useState, useCallback } from "react";
 
 export interface SensorAlert {
   id: string;
+  dbId?: number;
   title: string;
   message: string;
   type: "info" | "warning" | "danger";
   time: string;
+  isResolved?: boolean;
+}
+
+export interface HistoryAlert {
+  id: string;
+  dbId?: number;
+  title: string;
+  message: string;
+  type: "info" | "warning" | "danger";
+  triggeredAt: string | null;
+  resolvedAt: string | null;
+  isResolved: true;
 }
 
 interface AlertsResponse {
   alerts: SensorAlert[];
+  history: HistoryAlert[];
   generatedAt: string;
   farmId: number | null;
 }
@@ -35,11 +49,12 @@ export function useAlerts(userId?: number) {
 
   const { data, isLoading, refetch } = useQuery<AlertsResponse>({
     queryKey: ["/api/my-alerts"],
-    refetchInterval: 30_000, // poll every 30 s
+    refetchInterval: 30_000,
   });
 
   const allAlerts: SensorAlert[] = data?.alerts ?? [];
   const alerts = allAlerts.filter((a) => !dismissedIds.has(a.id));
+  const history: HistoryAlert[] = data?.history ?? [];
 
   const dismiss = useCallback(
     (id: string) => {
@@ -67,8 +82,9 @@ export function useAlerts(userId?: number) {
   }, [userId, allAlerts]);
 
   return {
-    alerts,          // active (not dismissed)
-    allAlerts,       // everything from server
+    alerts,        // active, non-dismissed
+    allAlerts,     // all active from server
+    history,       // resolved historical alerts from DB
     isLoading,
     farmId: data?.farmId,
     generatedAt: data?.generatedAt,

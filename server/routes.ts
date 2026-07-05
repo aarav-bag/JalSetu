@@ -630,11 +630,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     // Save soil moisture reading
+    // ESP32 sends fieldId as a 1-based sequential index (1, 2, 3…)
+    // Map it to the actual DB field id by looking up the farm's fields ordered by id
     if (data.soilMoisture !== undefined) {
+      const farmFields = await storage.getFieldsByFarmId(data.farmId);
+      farmFields.sort((a, b) => a.id - b.id);
+      const targetField = farmFields[data.fieldId - 1]; // 1-based → 0-based index
+      if (!targetField) {
+        return res.status(422).json({
+          error: `Farm has ${farmFields.length} field(s); received fieldId ${data.fieldId} which is out of range`,
+        });
+      }
       const level = Math.round(data.soilMoisture);
       saved.soilMoisture = await storage.createSoilMoisture({
         farmId: data.farmId,
-        fieldId: data.fieldId,
+        fieldId: targetField.id,
         moistureLevel: level,
         status: level >= 60 ? "optimal" : level >= 35 ? "warning" : "danger",
       });

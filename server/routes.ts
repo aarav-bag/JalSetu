@@ -370,26 +370,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Sort fields by id so position-based indexing matches ESP32 order
     fields.sort((a, b) => a.id - b.id);
 
-    // Latest reading per field
+    // Latest reading per field — use null (not 0) for missing readings so 0% is valid
     const fieldReadings = fields.map(field => {
       const latest = rawHistory.find(r => r.fieldId === field.id);
       return {
         id: field.id,
         name: field.name,
-        value: latest?.moistureLevel ?? 0,
+        // null = no reading ever; 0 = valid "critically dry" reading
+        value: latest !== undefined ? latest.moistureLevel : null as number | null,
         status: latest?.status ?? "warning",
+        hasReading: latest !== undefined,
       };
     });
 
-    const validReadings = fieldReadings.filter(f => f.value > 0);
-    const avgLevel = validReadings.length
-      ? Math.round(validReadings.reduce((s, f) => s + f.value, 0) / validReadings.length)
-      : 0;
+    const readingsWithData = fieldReadings.filter(f => f.hasReading);
+    const avgLevel = readingsWithData.length
+      ? Math.round(readingsWithData.reduce((s, f) => s + (f.value as number), 0) / readingsWithData.length)
+      : null;
     const overallStatus =
-      avgLevel >= 60 ? "Ideal Moisture Level"
-      : avgLevel >= 35 ? "Needs Attention"
-      : avgLevel > 0  ? "Critically Low"
-      : "No Data";
+      avgLevel === null      ? "No Data"
+      : avgLevel >= 60       ? "Ideal Moisture Level"
+      : avgLevel >= 35       ? "Needs Attention"
+      :                        "Critically Low";
 
     // Group history by calendar date → average per field per day (last 7 days)
     const byDate: Record<string, Record<number, number[]>> = {};
@@ -415,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { date, average: avg, fieldAvgs };
       });
 
-    res.json({ level: avgLevel, status: overallStatus, fields: fieldReadings, history, fieldNames: fields.map(f => f.name) });
+    res.json({ level: avgLevel, status: overallStatus, fields: fieldReadings, history, fieldNames: fields.map(f => f.name), hasAnyData: readingsWithData.length > 0 });
   }));
 
   // Water quality history for details page

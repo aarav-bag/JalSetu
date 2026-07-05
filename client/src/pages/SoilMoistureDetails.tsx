@@ -10,19 +10,20 @@ const SoilMoistureDetails = () => {
   const farmId = params?.id ? parseInt(params.id) : 1;
 
   const { data, isLoading } = useQuery<{
-    level: number;
+    level: number | null;
     status: string;
-    fields: { id: number; name: string; value: number; status: string }[];
+    fields: { id: number; name: string; value: number | null; status: string; hasReading: boolean }[];
     history: { date: string; average: number; fieldAvgs: (number | null)[] }[];
     fieldNames: string[];
+    hasAnyData: boolean;
   }>({ queryKey: [`/api/farm/${farmId}/soil-moisture`] });
 
-  const moistureLevel = data?.level ?? 0;
+  const moistureLevel = data?.level ?? null;
   const moistureStatus = data?.status ?? "No Data";
   const fieldReadings = data?.fields ?? [];
   const history = data?.history ?? [];
   const fieldNames = data?.fieldNames ?? [];
-  const hasData = moistureLevel > 0;
+  const hasData = data?.hasAnyData ?? false;
 
   const getColor = (level: number) => {
     if (level >= 60) return { stroke: "#34d399", text: "text-emerald-500 dark:text-emerald-300", bar: "bg-emerald-400" };
@@ -48,16 +49,17 @@ const SoilMoistureDetails = () => {
     }
   };
 
-  const getFieldRecommendation = (field: { name: string; value: number; status: string }) => {
-    if (field.value === 0) return `No readings yet for ${field.name}.`;
+  const getFieldRecommendation = (field: { name: string; value: number | null; status: string; hasReading: boolean }) => {
+    if (!field.hasReading) return `No readings yet for ${field.name}.`;
     if (field.status === "optimal") return `At ${field.value}% — optimal moisture. No irrigation needed.`;
     if (field.status === "warning") return `At ${field.value}% — slightly low. Schedule irrigation within 24 hours.`;
     return `At ${field.value}% — critically low. Irrigate as soon as possible.`;
   };
 
-  const colors = getColor(moistureLevel);
+  const displayLevel = moistureLevel ?? 0;
+  const colors = getColor(displayLevel);
   const circumference = 2 * Math.PI * 40;
-  const offset = circumference - (moistureLevel / 100) * circumference;
+  const offset = circumference - (displayLevel / 100) * circumference;
 
   const recColors = [
     { color: 'rgba(59,130,246,0.15)',  border: 'rgba(59,130,246,0.3)',  textColor: 'text-blue-600 dark:text-blue-300' },
@@ -111,21 +113,21 @@ const SoilMoistureDetails = () => {
                           style={{ transition: 'stroke-dashoffset 1s ease', filter: `drop-shadow(0 0 5px ${colors.stroke})` }} />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className={`text-2xl font-bold ${colors.text} leading-none`}>{moistureLevel}%</span>
+                        <span className={`text-2xl font-bold ${colors.text} leading-none`}>{displayLevel}%</span>
                         <span className="text-[9px] card-muted font-semibold mt-1 tracking-wider uppercase">moisture</span>
                       </div>
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-bold card-heading">{moistureStatus}</p>
                       <p className="text-xs card-body mt-1 leading-relaxed">
-                        {moistureLevel >= 60
+                        {displayLevel >= 60
                           ? "Current soil moisture is optimal for your crops."
-                          : moistureLevel >= 35
+                          : displayLevel >= 35
                           ? "Soil moisture is below optimal. Consider scheduling irrigation."
                           : "Soil moisture is critically low. Irrigate as soon as possible."}
                       </p>
                       <div className="flex flex-wrap gap-1.5 mt-3">
-                        {fieldReadings.filter(f => f.value > 0).map((field) => {
+                        {fieldReadings.filter(f => f.hasReading).map((field) => {
                           const p = getPillStyle(field.status);
                           return (
                             <span key={field.id} className={`px-2.5 py-1 rounded-xl text-xs font-semibold ${p.color}`}
@@ -192,7 +194,7 @@ const SoilMoistureDetails = () => {
                   <p className="text-sm card-muted text-center py-2">No fields configured.</p>
                 ) : (
                   fieldReadings.map(field => {
-                    const s = getFieldAnalysisStyle(field.value > 0 ? field.status : "default");
+                    const s = getFieldAnalysisStyle(field.hasReading ? field.status : "default");
                     return (
                       <div key={field.id} className="rounded-xl p-3" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
                         <h4 className={`text-sm font-bold ${s.heading} mb-1`}>{field.name}</h4>
@@ -216,37 +218,46 @@ const SoilMoistureDetails = () => {
                 <div className="glass-card rounded-[1.25rem] p-5 mb-4">
                   <p className="text-sm card-body mb-4">Based on current sensor readings:</p>
                   <div className="space-y-3">
-                    {fieldReadings.filter(f => f.value > 0).map((field, i) => {
-                      const rc = recColors[i % recColors.length];
-                      const action =
-                        field.status === "optimal"
-                          ? `Skip irrigation for ${field.name} for the next 48 hours.`
-                          : field.status === "warning"
-                          ? `Irrigate ${field.name} within 24 hours with ~2.5 cm of water.`
-                          : `Irrigate ${field.name} immediately — moisture is critically low.`;
+                    {(() => {
+                      const activeFields = fieldReadings.filter(f => f.hasReading);
                       return (
-                        <div key={field.id} className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
-                            style={{ background: rc.color, border: `1px solid ${rc.border}` }}>
-                            <span className={rc.textColor}>{i + 1}</span>
-                          </div>
-                          <p className="text-sm pt-1 card-body">{action}</p>
-                        </div>
+                        <>
+                          {activeFields.map((field, i) => {
+                            const rc = recColors[i % recColors.length];
+                            const action =
+                              field.status === "optimal"
+                                ? `Skip irrigation for ${field.name} for the next 48 hours.`
+                                : field.status === "warning"
+                                ? `Irrigate ${field.name} within 24 hours with ~2.5 cm of water.`
+                                : `Irrigate ${field.name} immediately — moisture is critically low.`;
+                            return (
+                              <div key={field.id} className="flex items-start gap-3">
+                                <div className="h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
+                                  style={{ background: rc.color, border: `1px solid ${rc.border}` }}>
+                                  <span className={rc.textColor}>{i + 1}</span>
+                                </div>
+                                <p className="text-sm pt-1 card-body">{action}</p>
+                              </div>
+                            );
+                          })}
+                          {activeFields.length > 0 && (() => {
+                            const nextIdx = activeFields.length % recColors.length;
+                            const rc = recColors[nextIdx];
+                            return (
+                              <div className="flex items-start gap-3">
+                                <div className="h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
+                                  style={{ background: rc.color, border: `1px solid ${rc.border}` }}>
+                                  <span className={rc.textColor}>{activeFields.length + 1}</span>
+                                </div>
+                                <p className="text-sm pt-1 card-body">
+                                  <strong className="card-value">Next check:</strong> Monitor all fields after any irrigation event.
+                                </p>
+                              </div>
+                            );
+                          })()}
+                        </>
                       );
-                    })}
-                    {fieldReadings.filter(f => f.value > 0).length > 0 && (
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
-                          style={{ background: recColors[fieldReadings.filter(f => f.value > 0).length % recColors.length].color, border: `1px solid ${recColors[fieldReadings.filter(f => f.value > 0).length % recColors.length].border}` }}>
-                          <span className={recColors[fieldReadings.filter(f => f.value > 0).length % recColors.length].textColor}>
-                            {fieldReadings.filter(f => f.value > 0).length + 1}
-                          </span>
-                        </div>
-                        <p className="text-sm pt-1 card-body">
-                          <strong className="card-value">Next check:</strong> Monitor all fields after any irrigation event.
-                        </p>
-                      </div>
-                    )}
+                    })()}
                   </div>
                 </div>
               </div>

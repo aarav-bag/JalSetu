@@ -40,6 +40,7 @@ export interface IStorage {
   getSoilMoisture(id: number): Promise<SoilMoisture | undefined>;
   getLatestSoilMoistureByFieldId(fieldId: number): Promise<SoilMoisture | undefined>;
   getSoilMoisturesByFarmId(farmId: number): Promise<SoilMoisture[]>;
+  getSoilMoistureHistory(farmId: number, limit?: number): Promise<SoilMoisture[]>;
   createSoilMoisture(soilMoisture: InsertSoilMoisture): Promise<SoilMoisture>;
   
   // Weather Prediction methods
@@ -175,7 +176,16 @@ export class DatabaseStorage implements IStorage {
       .from(soilMoistures)
       .where(eq(soilMoistures.farmId, farmId));
   }
-  
+
+  async getSoilMoistureHistory(farmId: number, limit = 50): Promise<SoilMoisture[]> {
+    return await db
+      .select()
+      .from(soilMoistures)
+      .where(eq(soilMoistures.farmId, farmId))
+      .orderBy(desc(soilMoistures.createdAt))
+      .limit(limit);
+  }
+
   async createSoilMoisture(moisture: InsertSoilMoisture): Promise<SoilMoisture> {
     const [newMoisture] = await db.insert(soilMoistures).values(moisture).returning();
     return newMoisture;

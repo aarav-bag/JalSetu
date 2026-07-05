@@ -353,6 +353,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // Soil moisture data for details page
+  app.get("/api/farm/:id/soil-moisture", isAuthenticated, asyncHandler(async (req, res) => {
+    const farmId = parseInt(req.params.id);
+    if (isNaN(farmId)) return res.status(400).json({ error: "Invalid farm id" });
+
+    const farm = await storage.getFarm(farmId);
+    if (!farm) return res.status(404).json({ error: "Farm not found" });
+    if (farm.userId !== (req.user as any).id) return res.status(403).json({ error: "Forbidden" });
+
+    const [fields, rawHistory] = await Promise.all([
+      storage.getFieldsByFarmId(farmId),
+      storage.getSoilMoistureHistory(farmId, 100),
+    ]);
+
+    // Sort fields by id so position-based indexing matches ESP32 order
+    fields.sort((a, b) => a.id - b.id);
+
+    // Latest reading per field
+    const fieldReadings = fields.map(field => {
+      const latest = rawHistory.find(r => r.fieldId === field.id);
+      return {
+        id: field.id,
+        name: field.name,
+        value: latest?.moistureLevel ?? 0,
+        status: latest?.status ?? "warning",
+      };
+    });
+
+    const validReadings = fieldReadings.filter(f => f.value > 0);
+    const avgLevel = validReadings.length
+      ? Math.round(validReadings.reduce((s, f) => s + f.value, 0) / validReadings.length)
+      : 0;
+    const overallStatus =
+      avgLevel >= 60 ? "Ideal Moisture Level"
+      : avgLevel >= 35 ? "Needs Attention"
+      : avgLevel > 0  ? "Critically Low"
+      : "No Data";
+
+    // Group history by calendar date → average per field per day (last 7 days)
+    const byDate: Record<string, Record<number, number[]>> = {};
+    for (const row of rawHistory) {
+      const dateKey = new Date(row.createdAt!).toLocaleDateString("en-IN", {
+        day: "numeric", month: "short"
+      });
+      if (!byDate[dateKey]) byDate[dateKey] = {};
+      if (!byDate[dateKey][row.fieldId]) byDate[dateKey][row.fieldId] = [];
+      byDate[dateKey][row.fieldId].push(row.moistureLevel);
+    }
+    const history = Object.entries(byDate)
+      .slice(0, 7)
+      .map(([date, fieldMap]) => {
+        const fieldAvgs = fields.map(f => {
+          const vals = fieldMap[f.id] ?? [];
+          return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+        });
+        const defined = fieldAvgs.filter((v): v is number => v !== null);
+        const avg = defined.length
+          ? Math.round(defined.reduce((a, b) => a + b, 0) / defined.length)
+          : 0;
+        return { date, average: avg, fieldAvgs };
+      });
+
+    res.json({ level: avgLevel, status: overallStatus, fields: fieldReadings, history, fieldNames: fields.map(f => f.name) });
+  }));
+
   // Water quality history for details page
   app.get("/api/farm/:id/water-quality", isAuthenticated, asyncHandler(async (req, res) => {
     const farmId = parseInt(req.params.id);

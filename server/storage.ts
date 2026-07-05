@@ -33,6 +33,7 @@ export interface IStorage {
   // Water Quality methods
   getWaterQuality(id: number): Promise<WaterQuality | undefined>;
   getLatestWaterQualityByFarmId(farmId: number): Promise<WaterQuality | undefined>;
+  getWaterQualityHistory(farmId: number, limit?: number): Promise<WaterQuality[]>;
   createWaterQuality(waterQuality: InsertWaterQuality): Promise<WaterQuality>;
   
   // Soil Moisture methods
@@ -138,6 +139,15 @@ export class DatabaseStorage implements IStorage {
     return quality;
   }
   
+  async getWaterQualityHistory(farmId: number, limit = 10): Promise<WaterQuality[]> {
+    return db
+      .select()
+      .from(waterQualities)
+      .where(eq(waterQualities.farmId, farmId))
+      .orderBy(desc(waterQualities.createdAt))
+      .limit(limit);
+  }
+
   async createWaterQuality(quality: InsertWaterQuality): Promise<WaterQuality> {
     const [newQuality] = await db.insert(waterQualities).values(quality).returning();
     return newQuality;

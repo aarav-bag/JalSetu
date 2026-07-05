@@ -353,6 +353,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // Water quality history for details page
+  app.get("/api/farm/:id/water-quality", isAuthenticated, asyncHandler(async (req, res) => {
+    const farmId = parseInt(req.params.id);
+    if (isNaN(farmId)) return res.status(400).json({ error: "Invalid farm id" });
+
+    // Ownership check — prevent IDOR
+    const farm = await storage.getFarm(farmId);
+    if (!farm) return res.status(404).json({ error: "Farm not found" });
+    if (farm.userId !== (req.user as any).id) return res.status(403).json({ error: "Forbidden" });
+
+    const [latest, history] = await Promise.all([
+      storage.getLatestWaterQualityByFarmId(farmId),
+      storage.getWaterQualityHistory(farmId, 10),
+    ]);
+    res.json({ latest: latest ?? null, history });
+  }));
+
   // Initialize database with seed data route (for development/demo purposes)
   app.post("/api/seed-database", asyncHandler(async (req, res) => {
     // Create user

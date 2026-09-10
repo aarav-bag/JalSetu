@@ -1,0 +1,47 @@
+# JalSetu — Automatic Two-Field Irrigation System (Project Brief)
+
+## Overview
+JalSetu is an automatic irrigation system covering **two fields**, built on an ESP32, plus a separate ESP32-S3 board for live camera monitoring of the field(s).
+
+## Hardware Inventory
+- **ESP32 DevKit V1** — main irrigation controller
+- **ESP32-S3 WROOM N16R8 (OceanLabz)** with OV3660 camera — separate board, dedicated to camera/live view only, not the irrigation logic
+- **2x soil moisture sensors** — two *different types* (not identical models); confirm capacitive vs. resistive for each before writing ADC read/calibration code, since scaling and drift behavior differ between the two types
+- **1x Vedron Robotics 5V 1-channel relay module w/ optocoupler** — confirmed ESP32-compatible (3.3V logic trigger works directly; VCC still needs 5V)
+- **2x 3–9V DC mini water pump kits** (ND ROBO dual-nozzle kit; Kit4Curious kit) — each ships with a 9V battery, manual switch, and pipe
+- **Aquarium oxygen-pump tubing, 4x6mm, 10m** — backup/extension tubing only, not rated for sustained water pressure; use each pump kit's included pipe as the primary line
+
+## ⚠️ Open gap to resolve before wiring
+Two fields need **two independently-switched pump circuits**, but only **one** 1-channel relay is currently in hand. Options:
+- Add a second 1-channel relay module (same Vedron Robotics model), or
+- Swap in a 2-channel relay module
+
+Each field's pump needs its own relay channel so Field 1 can irrigate while Field 2 stays off, and vice versa.
+
+## Wiring plan (per field, repeat for each)
+1. Soil moisture sensor → ESP32 ADC pin (verify sensor type first — see inventory note above)
+2. ESP32 GPIO → Relay IN pin (3.3V logic, confirmed compatible via optocoupler)
+3. Relay VCC → ESP32 **5V/VIN** pin (not the 3.3V pin)
+4. Relay COM/NO contacts → wired in series with the pump's 3–9V DC power line (never power the pump directly from an ESP32 GPIO)
+5. Pump negative / DC supply ground → shared common ground with ESP32 and relay
+6. Bypass/remove the pump kit's included manual switch — the relay replaces it for automated control
+7. Replace the included 9V battery with a proper DC wall adapter (3–9V range) for continuous automated operation; a battery will drain quickly under repeated relay cycling
+
+## Control logic (independent per field)
+- Read soil moisture for the field
+- If dry AND (no rain expected AND tank has water) → relay ON → pump ON
+- If moisture reaches target OR tank runs empty (once a water-level sensor is added later) → relay OFF → pump OFF
+- Each field's logic and relay channel operate independently of the other field
+
+## Camera / live view (ESP32-S3, separate from irrigation controller)
+- Base firmware: Arduino IDE → File → Examples → ESP32 → Camera → **CameraWebServer**
+- Set the correct camera pin mapping for the OceanLabz ESP32-S3 N16R8 board specifically — check the seller's pin definitions, since it likely differs from the example's default AI-Thinker pinout
+- **Local live view**: MJPEG stream at `http://<esp32-s3-ip>:81/stream` over the same WiFi network; embeddable as an `<img>` tag in a dashboard
+- **Two-field coverage**: either mount one camera centrally so both fields are in frame, or add a second ESP32-S3 camera board (one per field)
+- **Remote/off-LAN viewing**: avoid continuous streaming (port-forwarding, dynamic IP issues); instead have the ESP32-S3 POST a JPEG snapshot every 5–10s to the JalSetu backend, which stores and serves the latest image per field to the dashboard/app
+- Power the camera board from its own separate supply — never share the irrigation controller's power line
+- Needs a weatherproof enclosure with a clear window over the lens (watch for internal condensation)
+
+## Not urgent for v1, add later
+- Water-level/float switch per tank, to stop pumps from dry-running when a tank is empty
+- Rain-forecast and irrigation-history inputs to make the "should I water" decision smarter than a flat moisture threshold

@@ -2,17 +2,16 @@ import {
   Camera,
   CheckCircle2,
   ChevronDown,
-  Clock3,
   Expand,
   Gauge,
   MapPin,
   RefreshCw,
+  Scale,
   ShieldCheck,
   Video,
   VideoOff,
   Wifi,
   WifiOff,
-  Wind,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -36,17 +35,16 @@ interface DashboardData {
   soilMoisture?: {
     fields?: FarmField[];
   };
-  waterQuality?: Array<{
-    name: string;
-    value: string | number;
-    unit?: string;
-    icon: "ph" | "tds" | "temp";
-  }>;
 }
 
 interface Esp32Status {
   online: boolean;
   lastSeen: string | null;
+  lastData?: {
+    tds?: number;
+    ph?: number;
+    soilMoisture?: number;
+  };
 }
 
 const fallbackFields: FarmField[] = [
@@ -57,13 +55,6 @@ const fallbackFields: FarmField[] = [
 function formatValue(value: number | string | null | undefined, unit = "") {
   if (value === null || value === undefined || value === "") return "No reading";
   return `${value}${unit}`;
-}
-
-function getMetric(
-  metrics: DashboardData["waterQuality"],
-  icon: "ph" | "tds" | "temp",
-) {
-  return metrics?.find((metric) => metric.icon === icon);
 }
 
 function relativeTime(iso: string | null | undefined) {
@@ -98,9 +89,8 @@ export default function LiveFarm() {
 
   const activeFieldId = selectedFieldId ?? fields[0]?.id ?? 1;
   const activeField = fields.find((field) => field.id === activeFieldId) ?? fields[0];
-  const temperature = getMetric(dashboard?.waterQuality, "temp");
-  const ph = getMetric(dashboard?.waterQuality, "ph");
-  const tds = getMetric(dashboard?.waterQuality, "tds");
+  const livePh = esp32?.lastData?.ph;
+  const liveTds = esp32?.lastData?.tds;
   const handleRefresh = async () => {
     await refetchEsp32();
     toast({
@@ -267,28 +257,24 @@ export default function LiveFarm() {
               <p className="mt-1 text-[11px] card-label">{activeField?.name || "Selected field"}</p>
             </div>
             <div className="glass-card rounded-[1.35rem] p-4 scale-in" style={{ animationDelay: "0.18s" }}>
-              <div className="flex items-center gap-2 text-cyan-500">
-                <Wind className="h-4 w-4" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em]">Temperature</span>
-              </div>
-              <p className="mt-3 text-xl font-bold card-value">{formatValue(temperature?.value, temperature?.unit)}</p>
-              <p className="mt-1 text-[11px] card-label">Latest water reading</p>
-            </div>
-            <div className="glass-card rounded-[1.35rem] p-4 scale-in" style={{ animationDelay: "0.22s" }}>
               <div className="flex items-center gap-2 text-violet-500">
                 <ShieldCheck className="h-4 w-4" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.12em]">Water pH</span>
               </div>
-              <p className="mt-3 text-xl font-bold card-value">{formatValue(ph?.value, ph?.unit)}</p>
-              <p className="mt-1 text-[11px] card-label">Latest water reading</p>
+              <p className="mt-3 text-xl font-bold card-value">
+                {livePh === undefined ? "No reading" : livePh.toFixed(1)}
+              </p>
+              <p className="mt-1 text-[11px] card-label">Latest ESP32 reading</p>
             </div>
-            <div className="glass-card rounded-[1.35rem] p-4 scale-in" style={{ animationDelay: "0.26s" }}>
+            <div className="glass-card rounded-[1.35rem] p-4 scale-in" style={{ animationDelay: "0.22s" }}>
               <div className="flex items-center gap-2 text-amber-500">
-                <Clock3 className="h-4 w-4" />
+                <Scale className="h-4 w-4" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.12em]">TDS</span>
               </div>
-              <p className="mt-3 text-xl font-bold card-value">{formatValue(tds?.value, tds?.unit)}</p>
-              <p className="mt-1 text-[11px] card-label">Latest water reading</p>
+              <p className="mt-3 text-xl font-bold card-value">
+                {liveTds === undefined ? "No reading" : `${Math.round(liveTds)} ppm`}
+              </p>
+              <p className="mt-1 text-[11px] card-label">Latest ESP32 reading</p>
             </div>
           </section>
 

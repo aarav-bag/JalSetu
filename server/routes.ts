@@ -597,12 +597,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       farmId: farm.id
     });
 
-    // Create water quality
+    // Do not seed sensor readings. They must come from the ESP32.
     const waterQuality = await storage.createWaterQuality({
       farmId: farm.id,
-      phLevel: "6.8",
-      tds: "320 ppm",
-      temperature: "28°C"
+      phLevel: "N/A",
+      tds: "N/A",
+      temperature: "N/A"
     });
 
     // Create soil moistures
@@ -709,8 +709,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const farmId = parseInt(req.params.farmId);
     const { lat, lon } = req.query;
 
-    // Default sensor demo values (used when DB is unavailable)
-    let ph = 6.8, tds = 320, waterTemp = 28;
+    // Sensor values stay undefined until a real reading is available.
+    let ph: number | undefined;
+    let tds: number | undefined;
+    let waterTemp: number | undefined;
     let soilMoistureAvg = 62;
     let fields: Array<{ name: string; value: number; status: string }> = [
       { name: "Field 1", value: 70, status: "optimal" },
@@ -728,9 +730,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const phEntry  = wq.find((m: any) => m.icon === "ph");
           const tdsEntry = wq.find((m: any) => m.icon === "tds");
           const tmpEntry = wq.find((m: any) => m.icon === "temp");
-          if (phEntry)  ph        = parseFloat(String(phEntry.value))  || ph;
-          if (tdsEntry) tds       = parseFloat(String(tdsEntry.value)) || tds;
-          if (tmpEntry) waterTemp = parseFloat(String(tmpEntry.value)) || waterTemp;
+           if (phEntry) {
+             const parsed = parseFloat(String(phEntry.value));
+             if (!isNaN(parsed)) ph = parsed;
+           }
+           if (tdsEntry) {
+             const parsed = parseFloat(String(tdsEntry.value));
+             if (!isNaN(parsed)) tds = parsed;
+           }
+           if (tmpEntry) {
+             const parsed = parseFloat(String(tmpEntry.value));
+             if (!isNaN(parsed)) waterTemp = parsed;
+           }
         }
         const sm = (dashboard as any).soilMoisture;
         if (sm) {

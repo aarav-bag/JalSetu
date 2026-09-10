@@ -1,0 +1,1 @@
+- [Sensor data trust](sensor-data-trust.md) — never display simulated pH or seeded pH/TDS as live readings; show no reading until a real sensor payload arrives.

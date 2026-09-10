@@ -135,13 +135,6 @@ float readTDS() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  Read pH  (simulated neutral — replace with real sensor math)
-// ══════════════════════════════════════════════════════════════
-float readPH() {
-  float options[] = {7.0, 7.1, 7.2, 7.3, 7.4, 7.5};
-  return options[random(0, 6)];
-}
-
 // ══════════════════════════════════════════════════════════════
 //  Read Soil Moisture  (0–100 %)
 // ══════════════════════════════════════════════════════════════
@@ -155,7 +148,7 @@ float readSoil(int pin, int dryVal, int wetVal) {
 // ══════════════════════════════════════════════════════════════
 //  POST sensor data to JalSetu server
 // ══════════════════════════════════════════════════════════════
-void sendToServer(int fieldId, float tds, float ph, float soil) {
+void sendToServer(int fieldId, float tds, float soil) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Not connected — skipping upload");
     return;
@@ -170,7 +163,6 @@ void sendToServer(int fieldId, float tds, float ph, float soil) {
   doc["farmId"]       = FARM_ID;
   doc["fieldId"]      = fieldId;
   doc["tds"]          = (int)tds;
-  doc["ph"]           = ph;
   doc["soilMoisture"] = (int)soil;
 
   String body;
@@ -187,7 +179,6 @@ void sendToServer(int fieldId, float tds, float ph, float soil) {
 // ══════════════════════════════════════════════════════════════
 void setup() {
   Serial.begin(115200);
-  randomSeed(analogRead(33));
   analogReadResolution(12);
 
   pinMode(PIN_LED,        OUTPUT);
@@ -214,16 +205,15 @@ void loop() {
   lastSend = now;
 
   float tds   = readTDS();
-  float ph    = readPH();
   float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
   float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
 
-  Serial.printf("[Sensors] TDS: %.0f ppm | pH: %.1f | F1: %.0f%% | F2: %.0f%%\n",
-                tds, ph, soil1, soil2);
+  Serial.printf("[Sensors] TDS: %.0f ppm | F1: %.0f%% | F2: %.0f%%\n",
+                tds, soil1, soil2);
 
   blinkLed();
-  sendToServer(1, tds, ph, soil1);
-  sendToServer(2, tds, ph, soil2);
+  sendToServer(1, tds, soil1);
+  sendToServer(2, tds, soil2);
 
   ledOn();   // back to solid ON = idle
 }

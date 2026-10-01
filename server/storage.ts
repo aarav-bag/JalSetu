@@ -282,20 +282,34 @@ export class DatabaseStorage implements IStorage {
         status: farm.status
       },
       waterQuality: waterQuality ? (() => {
-        const ph  = parseFloat(waterQuality.phLevel ?? "7");
-        const tds = parseFloat((waterQuality.tds ?? "0").toString().replace(/[^\d.]/g, ""));
-        const phOk  = ph  >= 6.5 && ph  <= 8.5;
-        const tdsOk = tds >= 0   && tds <= 500;
-        const overall = (phOk && tdsOk)
-          ? { value: "Safe",   status: "Good",    label: "Good" }
-          : (!phOk && !tdsOk)
-            ? { value: "Poor",  status: "bad",     label: "Alert" }
-            : { value: "Fair",  status: "warning", label: "Warm" };
-        return [
-          { name: "pH Level", value: waterQuality.phLevel, status: "Good", icon: "ph" },
-          { name: "TDS", value: waterQuality.tds, unit: "ppm", status: "Good", icon: "tds" },
-          { name: "Quality", value: overall.value, status: overall.status, icon: "score" },
-        ];
+        const ph = parseFloat(waterQuality.phLevel ?? "");
+        const tds = parseFloat((waterQuality.tds ?? "").toString().replace(/[^\d.]/g, ""));
+        const hasPh = Number.isFinite(ph);
+        const hasTds = Number.isFinite(tds);
+        const metrics: Array<{ name: string; value: string; unit?: string; status: string; icon: "ph" | "tds" | "score" }> = [];
+        const checks: boolean[] = [];
+
+        if (hasPh) {
+          const status = ph < 6 || ph > 9 ? "danger" : ph < 6.5 || ph > 8.5 ? "warning" : "Good";
+          metrics.push({ name: "pH Level", value: waterQuality.phLevel, status, icon: "ph" });
+          checks.push(status === "Good");
+        }
+        if (hasTds) {
+          const status = tds > 1000 ? "danger" : tds > 500 ? "warning" : "Good";
+          metrics.push({ name: "TDS", value: waterQuality.tds, unit: "ppm", status, icon: "tds" });
+          checks.push(status === "Good");
+        }
+
+        // Only show an overall score once both actual water-quality sensors report.
+        if (checks.length === 2) {
+          const overall = checks.every(Boolean)
+            ? { value: "Safe", status: "Good" }
+            : checks.some(Boolean)
+              ? { value: "Fair", status: "warning" }
+              : { value: "Poor", status: "danger" };
+          metrics.push({ name: "Quality", value: overall.value, status: overall.status, icon: "score" });
+        }
+        return metrics;
       })() : [],
       soilMoisture: (() => {
         // soilMoistureReadings[i] is the latest reading for fields[i]

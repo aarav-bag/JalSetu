@@ -19,6 +19,13 @@
  *   • WiFiManager  by tzapu  (search "WiFiManager")
  *   • ArduinoJson  by bblanchon
  *   • HTTPClient   (bundled with ESP32 Arduino core)
+ *
+ * Active monitoring hardware:
+ *   • TDS analog sensor
+ *   • Soil moisture probes for Field 1 and Field 2
+ *   • REL_35-style analog water-level sensor (raw ADC only; calibrate separately)
+ *
+ * No camera, simulated pH, pump, or relay control is included.
  */
 
 #include <WiFi.h>
@@ -35,6 +42,7 @@ const int   FARM_ID    = 1;
 #define PIN_TDS          34   // TDS sensor analog out
 #define PIN_SOIL_FIELD1  32   // Soil moisture — Field 1
 #define PIN_SOIL_FIELD2  36   // Soil moisture — Field 2 (VP pin)
+#define PIN_WATER_LEVEL  35   // Water level sensor analog out (ADC1)
 
 // ─── Control pins ─────────────────────────────────────────────
 #define PIN_LED          2    // Onboard LED (GPIO 2)
@@ -135,14 +143,6 @@ float readTDS() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  Read pH  (simulated neutral — replace with real sensor math)
-// ══════════════════════════════════════════════════════════════
-float readPH() {
-  float options[] = {7.0, 7.1, 7.2, 7.3, 7.4, 7.5};
-  return options[random(0, 6)];
-}
-
-// ══════════════════════════════════════════════════════════════
 //  Read Soil Moisture  (0–100 %)
 // ══════════════════════════════════════════════════════════════
 float readSoil(int pin, int dryVal, int wetVal) {
@@ -153,9 +153,23 @@ float readSoil(int pin, int dryVal, int wetVal) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  Read water-level sensor raw ADC value (0–4095)
+//  Convert to percentage only after dry/full calibration.
+// ══════════════════════════════════════════════════════════════
+int readWaterLevelRaw() {
+  long sum = 0;
+  const int samples = 20;
+  for (int i = 0; i < samples; i++) {
+    sum += analogRead(PIN_WATER_LEVEL);
+    delay(5);
+  }
+  return (int)(sum / samples);
+}
+
+// ══════════════════════════════════════════════════════════════
 //  POST sensor data to JalSetu server
 // ══════════════════════════════════════════════════════════════
-void sendToServer(int fieldId, float tds, float ph, float soil) {
+void sendToServer(int fieldId, float tds, float soil, int waterLevelRaw) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Not connected — skipping upload");
     return;
@@ -170,8 +184,8 @@ void sendToServer(int fieldId, float tds, float ph, float soil) {
   doc["farmId"]       = FARM_ID;
   doc["fieldId"]      = fieldId;
   doc["tds"]          = (int)tds;
-  doc["ph"]           = ph;
   doc["soilMoisture"] = (int)soil;
+  doc["waterLevelRaw"] = waterLevelRaw;
 
   String body;
   serializeJson(doc, body);
@@ -187,7 +201,6 @@ void sendToServer(int fieldId, float tds, float ph, float soil) {
 // ══════════════════════════════════════════════════════════════
 void setup() {
   Serial.begin(115200);
-  randomSeed(analogRead(33));
   analogReadResolution(12);
 
   pinMode(PIN_LED,        OUTPUT);
@@ -214,16 +227,16 @@ void loop() {
   lastSend = now;
 
   float tds   = readTDS();
-  float ph    = readPH();
   float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
   float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
+  int waterLevelRaw = readWaterLevelRaw();
 
-  Serial.printf("[Sensors] TDS: %.0f ppm | pH: %.1f | F1: %.0f%% | F2: %.0f%%\n",
-                tds, ph, soil1, soil2);
+  Serial.printf("[Sensors] TDS: %.0f ppm | F1: %.0f%% | F2: %.0f%% | Water level ADC: %d\n",
+                tds, soil1, soil2, waterLevelRaw);
 
   blinkLed();
-  sendToServer(1, tds, ph, soil1);
-  sendToServer(2, tds, ph, soil2);
+  sendToServer(1, tds, soil1, waterLevelRaw);
+  sendToServer(2, tds, soil2, waterLevelRaw);
 
   ledOn();   // back to solid ON = idle
 }

@@ -597,12 +597,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       farmId: farm.id
     });
 
-    // Create water quality
+    // Do not seed fake sensor values. Water-quality readings come from hardware.
     const waterQuality = await storage.createWaterQuality({
       farmId: farm.id,
-      phLevel: "6.8",
-      tds: "320 ppm",
-      temperature: "28°C"
+      phLevel: "N/A",
+      tds: "N/A",
+      temperature: "N/A"
     });
 
     // Create soil moistures
@@ -709,13 +709,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const farmId = parseInt(req.params.farmId);
     const { lat, lon } = req.query;
 
-    // Default sensor demo values (used when DB is unavailable)
-    let ph = 6.8, tds = 320, waterTemp = 28;
-    let soilMoistureAvg = 62;
-    let fields: Array<{ name: string; value: number; status: string }> = [
-      { name: "Field 1", value: 70, status: "optimal" },
-      { name: "Field 2", value: 44, status: "warning" },
-    ];
+    // Do not invent sensor readings when the device has not supplied them.
+    let ph: number | undefined;
+    let tds: number | undefined;
+    let waterTemp: number | undefined;
+    let soilMoistureAvg: number | undefined;
+    let fields: Array<{ name: string; value: number; status: string }> = [];
     let rainChanceTomorrow = 20;
     let forecastTemp = 34;
 
@@ -728,14 +727,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const phEntry  = wq.find((m: any) => m.icon === "ph");
           const tdsEntry = wq.find((m: any) => m.icon === "tds");
           const tmpEntry = wq.find((m: any) => m.icon === "temp");
-          if (phEntry)  ph        = parseFloat(String(phEntry.value))  || ph;
-          if (tdsEntry) tds       = parseFloat(String(tdsEntry.value)) || tds;
-          if (tmpEntry) waterTemp = parseFloat(String(tmpEntry.value)) || waterTemp;
+          if (phEntry) {
+            const value = parseFloat(String(phEntry.value));
+            if (Number.isFinite(value)) ph = value;
+          }
+          if (tdsEntry) {
+            const value = parseFloat(String(tdsEntry.value));
+            if (Number.isFinite(value)) tds = value;
+          }
+          if (tmpEntry) {
+            const value = parseFloat(String(tmpEntry.value));
+            if (Number.isFinite(value)) waterTemp = value;
+          }
         }
         const sm = (dashboard as any).soilMoisture;
-        if (sm) {
-          soilMoistureAvg = sm.level || soilMoistureAvg;
-          if (sm.fields?.length) fields = sm.fields;
+        if (sm?.fields?.length) {
+          const observedFields = sm.fields.filter((field: any) =>
+            field.hasReading === true && Number.isFinite(field.value)
+          );
+          if (observedFields.length) {
+            fields = observedFields.map((field: any) => ({
+              name: field.name,
+              value: field.value,
+              status: field.status,
+            }));
+            soilMoistureAvg = Math.round(
+              fields.reduce((total, field) => total + field.value, 0) / fields.length
+            );
+          }
         }
       }
     } catch (_) {
@@ -780,7 +799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // In-memory status: tracks the last time the ESP32 sent data
   let esp32LastSeen: Date | null = null;
-  let esp32LastData: { tds?: number; soilMoisture?: number; ph?: number } = {};
+  let esp32LastData: { tds?: number; soilMoisture?: number; ph?: number; waterLevelRaw?: number } = {};
 
   // Status endpoint — frontend polls this to show online/offline badge
   app.get("/api/esp32/status", (req, res) => {
@@ -805,6 +824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ph: z.number().min(0).max(14).optional(),   // pH 0–14
       soilMoisture: z.number().min(0).max(100).optional(), // moisture %
       waterTemp: z.number().optional(),            // optional temperature °C
+      waterLevelRaw: z.number().int().min(0).max(4095).optional(), // uncalibrated ADC count
     });
 
     const data = schema.parse(req.body);
@@ -815,7 +835,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Update in-memory status
     esp32LastSeen = new Date();
-    esp32LastData = { tds: data.tds, soilMoisture: data.soilMoisture, ph: data.ph };
+    esp32LastData = {
+      tds: data.tds,
+      soilMoisture: data.soilMoisture,
+      ph: data.ph,
+      waterLevelRaw: data.waterLevelRaw,
+    };
 
     const saved: Record<string, any> = {};
 

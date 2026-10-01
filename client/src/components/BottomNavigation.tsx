@@ -1,4 +1,4 @@
-import { Home, BarChart2, Bell, Settings, Video } from "lucide-react";
+import { Home, BarChart2, Bell, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
@@ -30,7 +30,6 @@ const BottomNavigation = () => {
   const navItems = [
     { name: t.home, icon: Home, path: "/" },
     { name: t.reports, icon: BarChart2, path: "/reports" },
-    { name: "Live", icon: Video, path: "/live-farm" },
     { name: t.alerts, icon: Bell, path: "/alerts" },
     { name: t.settings, icon: Settings, path: "/settings" },
   ];

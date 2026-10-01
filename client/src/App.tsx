@@ -17,7 +17,6 @@ import SoilMoistureDetails from "@/pages/SoilMoistureDetails";
 import WaterPredictionDetails from "@/pages/WaterPredictionDetails";
 import IrrigationTipsDetails from "@/pages/IrrigationTipsDetails";
 import ReportDetails from "@/pages/ReportDetails";
-import LiveFarm from "@/pages/LiveFarm";
 import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from "./context/LanguageContext";
 import { LocationProvider } from "./context/LocationContext";
@@ -65,7 +64,6 @@ function Router() {
         <Route path="/register" component={Register} />
         <Route path="/">{() => <ProtectedRoute component={Home} />}</Route>
         <Route path="/reports">{() => <ProtectedRoute component={Reports} />}</Route>
-        <Route path="/live-farm">{() => <ProtectedRoute component={LiveFarm} />}</Route>
         <Route path="/alerts">{() => <ProtectedRoute component={Alerts} />}</Route>
         <Route path="/settings">{() => <ProtectedRoute component={Settings} />}</Route>
         <Route path="/edit-profile">{() => <ProtectedRoute component={EditProfile} />}</Route>

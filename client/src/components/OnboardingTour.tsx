@@ -52,7 +52,7 @@ const PhBar = () => (
       style={{ background: "linear-gradient(to right, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6)" }}>
       <div className="absolute top-0 h-full w-0.5 bg-white/90 shadow" style={{ left: "49%" }} />
       <div className="absolute -top-0.5 text-[9px] font-bold text-white drop-shadow"
-        style={{ left: "calc(49% - 12px)" }}>pH range</div>
+        style={{ left: "calc(49% - 6px)" }}>6.8</div>
     </div>
     <div className="flex justify-between text-[10px] font-medium">
       <span className="text-red-500">Acidic (0)</span>
@@ -108,9 +108,9 @@ const STEPS: Step[] = [
       <div className="flex flex-col items-center gap-3 py-2">
         <div className="grid grid-cols-3 gap-3 w-full">
           {[
-            { label: "pH",      value: "—", color: "#3b82f6", icon: <Droplet className="h-4 w-4" /> },
-            { label: "TDS",     value: "—", color: "#8b5cf6", icon: <Scale className="h-4 w-4" /> },
-            { label: "Moisture",value: "—", color: "#10b981", icon: <Shrub className="h-4 w-4" /> },
+            { label: "pH",      value: "6.8",    color: "#3b82f6", icon: <Droplet className="h-4 w-4" /> },
+            { label: "TDS",     value: "280 ppm", color: "#8b5cf6", icon: <Scale className="h-4 w-4" /> },
+            { label: "Moisture",value: "68%",     color: "#10b981", icon: <Shrub className="h-4 w-4" /> },
           ].map((m) => (
             <div key={m.label}
               className="rounded-2xl p-3 flex flex-col items-center gap-1.5"

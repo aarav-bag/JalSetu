@@ -16,7 +16,10 @@ export function setupAuth(app: Express) {
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        // Replit's development preview is embedded cross-site. Allow its
+        // session cookie there; production remains same-site by default.
+        sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
+        secure: 'auto',
         maxAge: 24 * 60 * 60 * 1000 // 1 day
       }
     })

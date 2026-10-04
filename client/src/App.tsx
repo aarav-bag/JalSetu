@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
+import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
 import Reports from "@/pages/Reports";
 import Alerts from "@/pages/Alerts";
@@ -33,7 +34,11 @@ function PageTransition({ children }: { children: React.ReactNode }) {
   }, [location]);
 
   return (
-    <div key={location} className="page-transition" style={{ minHeight: '100%' }}>
+    <div
+      key={location}
+      className="page-transition"
+      style={{ minHeight: location === "/" ? "100vh" : "100%" }}
+    >
       {children}
     </div>
   );
@@ -60,9 +65,12 @@ function Router() {
   return (
     <PageTransition>
       <Switch>
+        <Route path="/">
+          {() => <Landing onEnterPortal={() => navigate("/portal")} />}
+        </Route>
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
-        <Route path="/">{() => <ProtectedRoute component={Home} />}</Route>
+        <Route path="/portal">{() => <ProtectedRoute component={Home} />}</Route>
         <Route path="/reports">{() => <ProtectedRoute component={Reports} />}</Route>
         <Route path="/alerts">{() => <ProtectedRoute component={Alerts} />}</Route>
         <Route path="/settings">{() => <ProtectedRoute component={Settings} />}</Route>

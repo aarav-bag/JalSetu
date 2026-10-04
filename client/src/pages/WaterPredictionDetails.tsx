@@ -71,7 +71,7 @@ const WaterPredictionDetails = () => {
       <Header />
       <main className="flex-1 px-5 pt-2 pb-28 overflow-y-auto z-10">
         <div className="flex items-center mb-5">
-          <Link href="/" className="mr-3">
+          <Link href="/portal" className="mr-3">
             <div className="h-9 w-9 rounded-xl glass-tile flex items-center justify-center shadow-sm">
               <ArrowLeft className="h-4 w-4 text-gray-600 dark:text-white/70" />
             </div>

@@ -39,7 +39,7 @@ export default function Register() {
           {
             onSuccess: async () => {
               await refetchUser();
-              navigate('/');
+              navigate('/portal');
             },
           }
         );
@@ -48,7 +48,7 @@ export default function Register() {
   }
 
   const features = [
-    { icon: Droplets, label: 'Water Quality', desc: 'Real-time pH & TDS monitoring', color: 'text-blue-400' },
+    { icon: Droplets, label: 'Water Quality', desc: 'Water quality monitoring', color: 'text-blue-400' },
     { icon: Sprout, label: 'Smart Irrigation', desc: 'AI-powered crop recommendations', color: 'text-emerald-400' },
     { icon: BarChart3, label: 'Analytics', desc: 'Detailed reports & insights', color: 'text-amber-400' },
     { icon: ShieldCheck, label: 'Alerts', desc: 'Instant issue notifications', color: 'text-purple-400' },

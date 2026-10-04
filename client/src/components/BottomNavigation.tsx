@@ -28,7 +28,7 @@ const BottomNavigation = () => {
   const alertCount = useAlertBadge();
 
   const navItems = [
-    { name: t.home, icon: Home, path: "/" },
+    { name: t.home, icon: Home, path: "/portal" },
     { name: t.reports, icon: BarChart2, path: "/reports" },
     { name: t.alerts, icon: Bell, path: "/alerts" },
     { name: t.settings, icon: Settings, path: "/settings" },

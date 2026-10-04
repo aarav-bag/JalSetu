@@ -26,7 +26,7 @@ export default function Login() {
     login(values, {
       onSuccess: async () => {
         await refetchUser();
-        navigate('/');
+        navigate('/portal');
       }
     });
   }

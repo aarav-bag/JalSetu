@@ -1,12 +1,14 @@
 import { ArrowDown, ArrowRight, ArrowUpRight, Droplets, Leaf, MapPin, Radio, Waves } from "lucide-react";
-import fieldImage from "./jalsetu-field.jpg";
-import "./Landing.css";
+import "./_group.css";
+import "./IndiaGlass.css";
 
-interface LandingProps {
-  onEnterPortal: () => void;
+interface IndiaGlassProps {
+  onEnterPortal?: () => void;
 }
 
-export default function Landing({ onEnterPortal }: LandingProps) {
+const fieldImage = "/__mockup/images/jalsetu-field.jpg";
+
+export function IndiaGlass({ onEnterPortal = () => {} }: IndiaGlassProps) {
   return (
     <div className="india-glass" id="top">
       <div className="ig-atmosphere" aria-hidden="true" />
@@ -184,3 +186,5 @@ export default function Landing({ onEnterPortal }: LandingProps) {
     </div>
   );
 }
+
+export default IndiaGlass;

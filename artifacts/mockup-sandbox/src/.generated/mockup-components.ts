@@ -4,5 +4,7 @@ export const modules: ModuleMap = {
   "./components/mockups/dashboard-redesign/Briefing.tsx": () => import("../components/mockups/dashboard-redesign/Briefing.tsx"),
   "./components/mockups/dashboard-redesign/Cockpit.tsx": () => import("../components/mockups/dashboard-redesign/Cockpit.tsx"),
   "./components/mockups/dashboard-redesign/Current.tsx": () => import("../components/mockups/dashboard-redesign/Current.tsx"),
-  "./components/mockups/dashboard-redesign/Scorecard.tsx": () => import("../components/mockups/dashboard-redesign/Scorecard.tsx")
+  "./components/mockups/dashboard-redesign/Scorecard.tsx": () => import("../components/mockups/dashboard-redesign/Scorecard.tsx"),
+  "./components/mockups/jalsetu-landing/Current.tsx": () => import("../components/mockups/jalsetu-landing/Current.tsx"),
+  "./components/mockups/jalsetu-landing/IndiaGlass.tsx": () => import("../components/mockups/jalsetu-landing/IndiaGlass.tsx")
 };

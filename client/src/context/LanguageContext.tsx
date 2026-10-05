@@ -5,6 +5,7 @@ export type Language = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'pt';
 export interface Translation {
   // Navigation
   home: string;
+  irrigation: string;
   reports: string;
   alerts: string;
   settings: string;
@@ -71,6 +72,7 @@ const translations: Record<Language, Translation> = {
   en: {
     // Navigation
     home: 'Home',
+    irrigation: 'Irrigation',
     reports: 'Reports',
     alerts: 'Alerts',
     settings: 'Settings',
@@ -136,6 +138,7 @@ const translations: Record<Language, Translation> = {
   hi: {
     // Navigation
     home: 'होम',
+    irrigation: 'सिंचाई',
     reports: 'रिपोर्ट',
     alerts: 'अलर्ट',
     settings: 'सेटिंग्स',
@@ -201,6 +204,7 @@ const translations: Record<Language, Translation> = {
   es: {
     // Navigation
     home: 'Inicio',
+    irrigation: 'Riego',
     reports: 'Informes',
     alerts: 'Alertas',
     settings: 'Configuración',
@@ -266,6 +270,7 @@ const translations: Record<Language, Translation> = {
   fr: {
     // Navigation
     home: 'Accueil',
+    irrigation: 'Irrigation',
     reports: 'Rapports',
     alerts: 'Alertes',
     settings: 'Paramètres',
@@ -331,6 +336,7 @@ const translations: Record<Language, Translation> = {
   de: {
     // Navigation
     home: 'Startseite',
+    irrigation: 'Bewässerung',
     reports: 'Berichte',
     alerts: 'Benachrichtigungen',
     settings: 'Einstellungen',
@@ -396,6 +402,7 @@ const translations: Record<Language, Translation> = {
   pt: {
     // Navigation
     home: 'Início',
+    irrigation: 'Irrigação',
     reports: 'Relatórios',
     alerts: 'Alertas',
     settings: 'Configurações',

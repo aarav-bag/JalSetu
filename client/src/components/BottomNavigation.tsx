@@ -1,4 +1,4 @@
-import { Home, BarChart2, Bell, Settings } from "lucide-react";
+import { Home, Sprout, BarChart2, Bell, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
@@ -29,6 +29,7 @@ const BottomNavigation = () => {
 
   const navItems = [
     { name: t.home, icon: Home, path: "/portal" },
+    { name: t.irrigation, icon: Sprout, path: "/irrigation" },
     { name: t.reports, icon: BarChart2, path: "/reports" },
     { name: t.alerts, icon: Bell, path: "/alerts" },
     { name: t.settings, icon: Settings, path: "/settings" },
@@ -36,7 +37,7 @@ const BottomNavigation = () => {
 
   return (
     <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-6">
-      <div className="max-w-xs w-full glass-nav rounded-[2rem] px-4 py-3 flex items-center justify-around">
+      <div className="max-w-sm w-full glass-nav rounded-[2rem] px-3 py-3 flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = location === item.path;
           return (

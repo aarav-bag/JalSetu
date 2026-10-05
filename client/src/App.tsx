@@ -13,6 +13,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import EditProfile from "@/pages/EditProfile";
 import HelpChatbot from "@/pages/HelpChatbot";
+import Irrigation from "@/pages/Irrigation";
 import WaterQualityDetails from "@/pages/WaterQualityDetails";
 import SoilMoistureDetails from "@/pages/SoilMoistureDetails";
 import WaterPredictionDetails from "@/pages/WaterPredictionDetails";
@@ -71,6 +72,7 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/portal">{() => <ProtectedRoute component={Home} />}</Route>
+        <Route path="/irrigation">{() => <ProtectedRoute component={Irrigation} />}</Route>
         <Route path="/reports">{() => <ProtectedRoute component={Reports} />}</Route>
         <Route path="/alerts">{() => <ProtectedRoute component={Alerts} />}</Route>
         <Route path="/settings">{() => <ProtectedRoute component={Settings} />}</Route>

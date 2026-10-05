@@ -5,6 +5,11 @@ import { initDb } from "./db-init";
 
 const app = express();
 app.set('trust proxy', 1);
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

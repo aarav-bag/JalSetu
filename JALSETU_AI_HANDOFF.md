@@ -695,8 +695,13 @@ firmware/README.md
 | 34 | TDS analog output |
 | 32 | Soil moisture, Field 1 |
 | 36 / VP | Soil moisture, Field 2 |
+<<<<<<< HEAD
 | 25 | Field 1 relay input (active-low; outputs armed) |
 | 26 | Field 2 relay input (active-low; outputs armed) |
+=======
+| 25 | Field 1 relay input (firmware output disabled by default) |
+| 26 | Field 2 relay input (firmware output disabled by default) |
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
 | 2 | Onboard status LED |
 | 0 | BOOT button, Wi-Fi reset |
 
@@ -1120,10 +1125,17 @@ This section is critical for another AI so it does not incorrectly claim the pro
 - No physical pH probe is installed; current pH telemetry is simulated. The app intentionally displays pH without a simulated label at the user's request.
 - TDS requires calibration and has limited compensation.
 - Soil sensors use fixed calibration constants.
+<<<<<<< HEAD
 - Pump target polling, per-field controls, and relay outputs are enabled; the user confirmed hardware commissioning is complete.
 - Relay-state acknowledgements exist; flow feedback does not.
 - Pump power must match the physical 5 V pump label; the photographed 9 V batteries must not be connected directly.
 - Re-verify relay GPIO/polarity, regulated pump supply, independent low-water cutoff, and maximum run time if the hardware changes.
+=======
+- Pump target polling and per-field controls exist, but `PUMP_OUTPUTS_ARMED` is false by default.
+- Relay-state acknowledgements exist; flow feedback does not.
+- Pump power must match the physical 5 V pump label; the photographed 9 V batteries must not be connected directly.
+- Relay GPIO/polarity, regulated pump supply, independent low-water cutoff, and max run time must be verified before arming.
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
 - No offline queue exists.
 - Pump commands are polled from the server; there is no independent offline irrigation schedule.
 
@@ -1303,7 +1315,11 @@ When testing sensor features:
 ## 19. Fast context summary for an AI prompt
 
 ```text
+<<<<<<< HEAD
 JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors and TDS, sends temporary simulated pH values from 7.0 to 7.4, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. No water-level sensor is in the current firmware. The app displays pH without a simulated label at the user's request; the values are nevertheless not physical measurements. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; pause for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls retain per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` is enabled, with outputs initialized OFF. The user reports the hardware commissioning and calibration checks are complete. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
+=======
+JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors, TDS, and raw water level, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. pH is not sent because no physical probe is connected. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; stop for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls require per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` remains false by default. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
 ```
 
 ---

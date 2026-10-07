@@ -24,9 +24,14 @@
  *   • TDS analog sensor
  *   • Soil moisture probes for Field 1 and Field 2
  *
+<<<<<<< HEAD
  * pH is simulated temporarily; no physical pH probe is connected.
  * No camera or water-level sensor is included.
  * Pump relay commands are supported and outputs initialize OFF.
+=======
+ * No camera or simulated pH is included. Pump relay commands are supported
+ * but the output arm switch is false by default.
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
  */
 
 #include <WiFi.h>
@@ -52,9 +57,15 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 #define PIN_PUMP_FIELD1  25   // Relay 1 IN — verify board pin labels
 #define PIN_PUMP_FIELD2  26   // Relay 2 IN — verify board pin labels
 
+<<<<<<< HEAD
 // Hardware commissioning has been confirmed by the user.
 // Keep the relay outputs inactive at boot; only server-approved targets can turn them on.
 #define PUMP_OUTPUTS_ARMED true
+=======
+// Keep false until relay GPIOs/polarity and physical safeguards are verified.
+// When false, the relay pins are left un-driven and reported as disabled.
+#define PUMP_OUTPUTS_ARMED false
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
 #define PUMP_RELAY_ACTIVE_LOW true
 
 // ─── Soil calibration ─────────────────────────────────────────

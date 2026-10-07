@@ -80,7 +80,11 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
   }
 
   if (input.rainChance >= IRRIGATION_POLICY.highRainChanceAt) {
+<<<<<<< HEAD
     return { desiredOn: false, reason: "Rain chance is high; automatic irrigation is paused" };
+=======
+    return { desiredOn: false, reason: "Rain chance is high; irrigation skipped" };
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
   }
 
   if (input.soilMoisture < IRRIGATION_POLICY.soilStartBelow) {
@@ -93,8 +97,12 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
 
   return {
     desiredOn: input.actualOn,
+<<<<<<< HEAD
     reason: input.actualOn
       ? "Maintaining irrigation until the stop threshold"
       : "Soil moisture is between the start and stop thresholds",
+=======
+    reason: input.actualOn ? "Maintaining irrigation until the stop threshold" : "Soil does not need irrigation yet",
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
   };
 }

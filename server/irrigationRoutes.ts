@@ -68,6 +68,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     if (!farm) return res.status(404).json({ error: "No farm found for this account" });
     await ensurePumpRows(farm.id);
 
+<<<<<<< HEAD
     let rainChance: number | null = null;
     try {
       rainChance = await getCurrentRainChance(farm.latitude ?? null, farm.longitude ?? null);
@@ -75,6 +76,8 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
       rainChance = null;
     }
 
+=======
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
     const { rows } = await pool.query(
       `SELECT f.id AS "fieldId", f.name AS "fieldName",
               c.mode, c.manual_on AS "manualOn",
@@ -85,6 +88,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
               c.firmware_enabled AS "firmwareEnabled",
               c.actual_on AS "actualOn",
               c.actual_updated_at AS "actualUpdatedAt",
+<<<<<<< HEAD
               c.updated_at AS "manualCommandAt",
               c.cooldown_until AS "cooldownUntil",
               sm.moisture_level AS "soilMoisture",
@@ -98,6 +102,11 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
          ORDER BY created_at DESC
          LIMIT 1
        ) sm ON TRUE
+=======
+              c.updated_at AS "updatedAt"
+       FROM fields f
+       JOIN irrigation_pump_controls c ON c.field_id = f.id
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
        WHERE f.farm_id = $1
        ORDER BY f.id`,
       [farm.id],
@@ -106,6 +115,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     res.json({
       farmId: farm.id,
       locationConfigured: farm.latitude !== null && farm.longitude !== null,
+<<<<<<< HEAD
       pumps: rows.map((row) => {
         const safetyReady = Boolean(
           row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled,
@@ -134,6 +144,12 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
           safetyReady,
         };
       }),
+=======
+      pumps: rows.map((row) => ({
+        ...row,
+        safetyReady: Boolean(row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled),
+      })),
+>>>>>>> d6ac647 (Update irrigation page and handoff documentation)
     });
   }));
 

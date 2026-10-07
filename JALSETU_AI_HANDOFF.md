@@ -4,7 +4,7 @@
 
 This is a technical and product handoff for the JalSetu project. It is written so another AI coding assistant can understand the project before making changes.
 
-This document describes the current implementation, not only the planned future system. Planned features such as pump control, automatic valves, MQTT, and full autonomous irrigation are **not implemented yet**.
+This document describes the current implementation, not only the planned future system. The prototype now has two-field app controls and ESP32 command polling, but pump outputs are hard-disabled by default and must stay disabled until actuator safety commissioning is complete. Automatic valves, MQTT, and production-ready irrigation automation are not implemented.
 
 Do not copy or expose credentials while working on this project. The repository contains environment-variable references and the firmware currently contains a device authentication value; those values should be treated as secrets and rotated/moved to secure provisioning before production use.
 
@@ -29,7 +29,7 @@ JalSetu currently combines:
 - Real-time-style polling for alerts
 - Persistent alert history for triggered and resolved conditions
 
-The current application is primarily a **monitoring and decision-support product**. It does not yet directly operate pumps, valves, relays, servos, or irrigation equipment.
+The current application combines monitoring with a safety-gated two-pump prototype. It supports per-field manual commands and rain-aware automatic targets, but the firmware output arm switch defaults off. It is not a production irrigation controller and has no flow feedback.
 
 ---
 
@@ -541,6 +541,12 @@ GET  /api/farm/:id/soil-moisture
 GET  /api/farm/:id/water-quality
 POST /api/esp32/sensor-data
 GET  /api/esp32/status
+GET  /api/esp32/pump-targets
+POST /api/esp32/pump-status
+POST /api/irrigation/location
+GET  /api/irrigation/pumps
+PUT  /api/irrigation/pumps/:fieldId/commissioning
+PATCH /api/irrigation/pumps/:fieldId
 ```
 
 ### Other routes
@@ -689,8 +695,12 @@ firmware/README.md
 | 34 | TDS analog output |
 | 32 | Soil moisture, Field 1 |
 | 36 / VP | Soil moisture, Field 2 |
+| 25 | Field 1 relay input (active-low; outputs armed) |
+| 26 | Field 2 relay input (active-low; outputs armed) |
 | 2 | Onboard status LED |
 | 0 | BOOT button, Wi-Fi reset |
+
+Water-level sensing is currently removed from the firmware and GPIO 35 is unused.
 
 ### Wi-Fi behavior
 
@@ -728,13 +738,7 @@ Limitations:
 
 ### pH module
 
-The current firmware does **not** read a physical pH sensor.
-
-`readPH()` currently returns a random value selected from a neutral range around 7.0–7.5. This exists for demonstration and API/dashboard testing.
-
-This is one of the most important facts for another AI:
-
-> Any current pH number shown by the ESP32 path is simulated unless a physical pH probe and real calibration formula have been added separately.
+The current firmware sends temporary simulated pH values from 7.0 to 7.4 in 0.1 steps. No physical pH sensor is installed; do not treat these values or their derived advice as actual water measurements.
 
 To make pH real, the firmware needs:
 
@@ -780,21 +784,17 @@ Limitations:
 Every 30 seconds:
 
 1. Read TDS.
-2. Read simulated pH.
-3. Read Field 1 moisture.
-4. Read Field 2 moisture.
-5. POST one payload for Field 1.
-6. POST one payload for Field 2.
+2. Read Field 1 moisture.
+3. Read Field 2 moisture.
+4. POST one payload for Field 1.
+5. POST one payload for Field 2.
 
-Both field uploads currently carry the same TDS and pH readings, while soil moisture differs by field.
+Both field uploads currently carry the same TDS and simulated pH readings, while soil moisture differs by field. No water-level value is sent.
 
-The firmware does not yet:
+The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs are compile-time enabled after the user confirmed the hardware commissioning checks; outputs initialize OFF and only authenticated server targets can start a pump. Keep the per-field app commissioning checks and run-time limits in place. The current controller does not:
 
-- Control a pump
 - Control a valve
-- Read tank level
-- Read flow
-- Receive commands from JalSetu
+- Read calibrated tank level or flow
 - Queue uploads while offline
 - Use MQTT
 - Update firmware over the air
@@ -1117,13 +1117,15 @@ This section is critical for another AI so it does not incorrectly claim the pro
 
 ### Firmware limitations
 
-- pH is simulated, not physically measured.
+- No physical pH probe is installed; current pH telemetry is simulated. The app intentionally displays pH without a simulated label at the user's request.
 - TDS requires calibration and has limited compensation.
 - Soil sensors use fixed calibration constants.
-- No actuator control exists.
-- No pump or valve feedback exists.
+- Pump target polling, per-field controls, and relay outputs are enabled; the user confirmed hardware commissioning is complete.
+- Relay-state acknowledgements exist; flow feedback does not.
+- Pump power must match the physical 5 V pump label; the photographed 9 V batteries must not be connected directly.
+- Re-verify relay GPIO/polarity, regulated pump supply, independent low-water cutoff, and maximum run time if the hardware changes.
 - No offline queue exists.
-- No device command channel exists.
+- Pump commands are polled from the server; there is no independent offline irrigation schedule.
 
 ### Frontend limitations
 
@@ -1144,13 +1146,13 @@ This section is critical for another AI so it does not incorrectly claim the pro
 
 ### Product limitations
 
-JalSetu is not yet a complete irrigation automation controller. It currently monitors and recommends. It does not physically start pumps or open valves.
+JalSetu is not yet a complete irrigation automation controller. The prototype can send manual or rain-aware pump targets after commissioning, but firmware outputs remain off until explicitly armed; it has no flow sensing or production-grade actuator safeguards.
 
 ---
 
 ## 16. What a future full irrigation system would add
 
-If extending this project, add these concepts rather than placing pump code directly inside the existing sensor upload route.
+For production irrigation beyond the safety-gated two-pump prototype, add these concepts rather than placing additional actuator logic inside the sensor upload route.
 
 ### Hardware
 
@@ -1209,7 +1211,7 @@ AI should recommend or optimize actions, but deterministic safety rules must be 
 
 ### Phase 1 — Make the current monitoring system trustworthy
 
-1. Replace simulated pH with a calibrated physical pH sensor.
+1. Add a physical pH probe only if one is installed, then calibrate and display its real readings.
 2. Calibrate TDS and soil sensors.
 3. Add sensor timestamps and quality flags.
 4. Remove remaining static report data.
@@ -1301,7 +1303,7 @@ When testing sensor features:
 ## 19. Fast context summary for an AI prompt
 
 ```text
-JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. It is a smart farm water-management dashboard. The ESP32 currently reads two analog soil-moisture sensors and one TDS sensor, while pH is simulated in firmware. It uploads JSON over HTTPS every 30 seconds to /api/esp32/sensor-data. The server persists water-quality and soil-moisture readings and maps ESP32 field numbers as 1-based positions to actual database fields sorted by ID. The frontend uses TanStack Query and wouter. Home shows water quality, soil moisture, weather, recommendations, and irrigation tips. Alerts are generated from live sensor thresholds, persisted in farm_alerts, auto-resolved when conditions clear, displayed in /alerts, and shown as toast notifications outside that tab. Open-Meteo supplies weather. The recommendation engine is rule-based. The chatbot uses a Groq-compatible API with a local keyword-based fallback. The app currently monitors and recommends; it does not control pumps, valves, servos, or irrigation hardware. Avoid fake sensor fallbacks, preserve null versus zero semantics, preserve authentication/ownership checks, and never expose secrets.
+JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors and TDS, sends temporary simulated pH values from 7.0 to 7.4, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. No water-level sensor is in the current firmware. The app displays pH without a simulated label at the user's request; the values are nevertheless not physical measurements. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; pause for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls retain per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` is enabled, with outputs initialized OFF. The user reports the hardware commissioning and calibration checks are complete. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
 ```
 
 ---

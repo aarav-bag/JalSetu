@@ -1,1 +1,2 @@
 - [JalSetu hardware scope](jalsetu-hardware-scope.md) — sensor ESP32 handles TDS, two soil probes, and calibrated-later water level; no camera, simulated pH, or unverified pump automation.
+- [JalSetu website](jalsetu-website.md) — the public website is www.jalsetu.isroot.in.

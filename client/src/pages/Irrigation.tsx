@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Check,
@@ -20,6 +20,8 @@ import BottomNavigation from "@/components/BottomNavigation";
 import LocationPicker from "@/components/LocationPicker";
 import PageShell from "@/components/PageShell";
 import { useUserLocation } from "@/context/LocationContext";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface SoilField {
   id: number;
@@ -54,6 +56,31 @@ interface WeatherData {
   advice: string;
   forecast: ForecastDay[];
   location?: { lat: number; lon: number };
+}
+
+interface PumpControl {
+  fieldId: number;
+  fieldName: string;
+  mode: "off" | "manual" | "auto";
+  manualOn: boolean;
+  powerVerified: boolean;
+  relayVerified: boolean;
+  lowWaterVerified: boolean;
+  maxRunSeconds: number;
+  firmwareEnabled: boolean;
+  actualOn: boolean;
+  actualUpdatedAt: string | null;
+  soilMoisture: number | null;
+  rainChance: number | null;
+  desiredOn: boolean;
+  decisionReason: string;
+  safetyReady: boolean;
+}
+
+interface PumpControlResponse {
+  farmId: number;
+  locationConfigured: boolean;
+  pumps: PumpControl[];
 }
 
 const safetyRequirements = [
@@ -158,7 +185,53 @@ function FieldMoistureCard({ field }: { field: SoilField }) {
   );
 }
 
-function PumpControlCard({ fieldName }: { fieldName: string }) {
+interface PumpControlCardProps {
+  pump: PumpControl;
+  busy: boolean;
+  onMode: (pump: PumpControl, mode: "off" | "auto") => Promise<void>;
+  onManual: (pump: PumpControl, on: boolean) => Promise<void>;
+  onCommission: (pump: PumpControl, values: {
+    powerVerified: boolean;
+    relayVerified: boolean;
+    lowWaterVerified: boolean;
+    maxRunSeconds: number;
+  }) => Promise<void>;
+}
+
+function PumpControlCard({ pump, busy, onMode, onManual, onCommission }: PumpControlCardProps) {
+  const [checks, setChecks] = useState({
+    powerVerified: pump.powerVerified,
+    relayVerified: pump.relayVerified,
+    lowWaterVerified: pump.lowWaterVerified,
+  });
+  const [maxRunSeconds, setMaxRunSeconds] = useState(pump.maxRunSeconds || 60);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (dirty) return;
+    setChecks({
+      powerVerified: pump.powerVerified,
+      relayVerified: pump.relayVerified,
+      lowWaterVerified: pump.lowWaterVerified,
+    });
+    setMaxRunSeconds(pump.maxRunSeconds || 60);
+  }, [dirty, pump.powerVerified, pump.relayVerified, pump.lowWaterVerified, pump.maxRunSeconds]);
+
+  const updateCheck = (key: keyof typeof checks, value: boolean) => {
+    setDirty(true);
+    setChecks((previous) => ({ ...previous, [key]: value }));
+  };
+
+  const saveCommissioning = async () => {
+    await onCommission(pump, { ...checks, maxRunSeconds });
+    setDirty(false);
+  };
+
+  const statusText = pump.actualUpdatedAt
+    ? `${pump.actualOn ? "ON" : "OFF"} · device reported`
+    : "Waiting for ESP32 status";
+  const controlId = `pump-${pump.fieldId}`;
+
   return (
     <article className="glass-tile rounded-2xl p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
@@ -167,40 +240,135 @@ function PumpControlCard({ fieldName }: { fieldName: string }) {
             <Waves className="h-5 w-5 text-slate-600 dark:text-slate-300" aria-hidden="true" />
           </div>
           <div>
-            <h3 className="text-sm font-bold card-heading">{fieldName}</h3>
+            <h3 className="text-sm font-bold card-heading">{pump.fieldName}</h3>
             <p className="mt-0.5 text-xs card-muted">Pump control</p>
           </div>
         </div>
-        <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-200">
-          Disabled
+        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+          pump.safetyReady
+            ? "border-teal-500/25 bg-teal-500/10 text-teal-700 dark:text-teal-200"
+            : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-200"
+        }`}>
+          {pump.safetyReady ? statusText : "Safety locked"}
         </span>
       </div>
 
       <p className="mt-4 text-xs leading-relaxed card-body">
-        Manual controls are locked. This device currently reports sensor telemetry only.
+        Mode: <span className="font-semibold capitalize">{pump.mode}</span>
+        {" · "}Maximum run: <span className="font-semibold">{pump.maxRunSeconds}s</span>
       </p>
+      <div className="mt-3 rounded-xl border border-cyan-700/15 bg-cyan-700/[0.04] p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide card-muted">Controller decision</p>
+            <p className="mt-1 text-xs leading-relaxed card-body">{pump.decisionReason}</p>
+          </div>
+          <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${
+            pump.desiredOn
+              ? "bg-teal-600/10 text-teal-800 dark:text-teal-200"
+              : "bg-slate-500/10 text-slate-700 dark:text-slate-200"
+          }`}>
+            Target {pump.desiredOn ? "ON" : "OFF"}
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold card-muted">
+          <span>Soil: {pump.soilMoisture === null ? "unavailable" : `${pump.soilMoisture}%`}</span>
+          <span>Today’s rain chance: {pump.rainChance === null ? "unavailable" : `${pump.rainChance}%`}</span>
+          <span>Device: {pump.actualOn ? "ON" : "OFF"}</span>
+        </div>
+      </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           type="button"
-          disabled
-          aria-describedby={`${fieldName.replace(/\s+/g, "-").toLowerCase()}-control-note`}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-700/20 bg-teal-700/[0.06] px-3 text-xs font-bold text-teal-900/45 disabled:cursor-not-allowed dark:text-teal-100/40"
+          onClick={() => void onManual(pump, true)}
+          disabled={busy || !pump.safetyReady}
+          aria-describedby={`${controlId}-control-note`}
+          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-700/20 bg-teal-700/[0.06] px-3 text-xs font-bold text-teal-900 transition-colors hover:bg-teal-700/10 disabled:cursor-not-allowed disabled:opacity-45 dark:text-teal-100"
         >
           <Check className="h-3.5 w-3.5" aria-hidden="true" />
-          Turn on
+          Manual on
         </button>
         <button
           type="button"
-          disabled
-          aria-describedby={`${fieldName.replace(/\s+/g, "-").toLowerCase()}-control-note`}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-400/25 bg-slate-400/[0.07] px-3 text-xs font-bold text-slate-700/45 disabled:cursor-not-allowed dark:text-slate-200/40"
+          onClick={() => void onManual(pump, false)}
+          disabled={busy}
+          aria-describedby={`${controlId}-control-note`}
+          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-400/25 bg-slate-400/[0.07] px-3 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-400/15 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200"
         >
           <Waves className="h-3.5 w-3.5" aria-hidden="true" />
-          Turn off
+          Stop
         </button>
       </div>
-      <p id={`${fieldName.replace(/\s+/g, "-").toLowerCase()}-control-note`} className="mt-3 text-[11px] leading-relaxed card-muted">
-        Not available until pump safety commissioning is complete.
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => void onMode(pump, "auto")}
+          disabled={busy || !pump.safetyReady}
+          className="min-h-10 rounded-xl border border-cyan-700/20 bg-cyan-700/[0.06] px-3 text-xs font-bold text-cyan-900 transition-colors hover:bg-cyan-700/10 disabled:cursor-not-allowed disabled:opacity-45 dark:text-cyan-100"
+        >
+          Automatic
+        </button>
+        <button
+          type="button"
+          onClick={() => void onMode(pump, "off")}
+          disabled={busy}
+          className="min-h-10 rounded-xl border border-slate-400/25 px-3 text-xs font-bold card-body transition-colors hover:bg-slate-400/10 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          Disable mode
+        </button>
+      </div>
+
+      {!pump.safetyReady && (
+        <div className="mt-4 space-y-2 border-t divider pt-3">
+          <p className="text-xs font-bold card-heading">Safety confirmation required for {pump.fieldName}</p>
+          {([
+            ["powerVerified", "Pump uses regulated 5V power; no 9V direct connection"],
+            ["relayVerified", "Relay GPIO and ON/OFF polarity tested with pump power disconnected"],
+            ["lowWaterVerified", "Independent physical low-water cutoff tested"],
+          ] as const).map(([key, label]) => (
+            <label key={key} className="flex items-start gap-2 text-[11px] leading-relaxed card-body">
+              <input
+                type="checkbox"
+                checked={checks[key]}
+                disabled={busy}
+                onChange={(event) => updateCheck(key, event.target.checked)}
+                className="mt-0.5"
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+          <label className="flex items-center justify-between gap-3 text-[11px] card-body">
+            <span>Maximum run time per start</span>
+            <span className="flex items-center gap-1">
+              <input
+                aria-label={`${pump.fieldName} maximum run time in seconds`}
+                type="number"
+                min={5}
+                max={600}
+                value={maxRunSeconds}
+                disabled={busy}
+                onChange={(event) => {
+                  setDirty(true);
+                  setMaxRunSeconds(Number(event.target.value));
+                }}
+                className="w-20 rounded-lg border border-slate-400/30 bg-transparent px-2 py-1 text-right card-heading"
+              />
+              sec
+            </span>
+          </label>
+          <button
+            type="button"
+            disabled={busy || !checks.powerVerified || !checks.relayVerified || !checks.lowWaterVerified || maxRunSeconds < 5 || maxRunSeconds > 600}
+            onClick={() => void saveCommissioning()}
+            className="min-h-10 w-full rounded-xl border border-amber-600/25 bg-amber-600/10 px-3 text-xs font-bold text-amber-950 transition-colors hover:bg-amber-600/15 disabled:cursor-not-allowed disabled:opacity-45 dark:text-amber-100"
+          >
+            Save safety checks
+          </button>
+        </div>
+      )}
+
+      <p id={`${controlId}-control-note`} className="mt-3 text-[11px] leading-relaxed card-muted">
+        Manual control still uses the device maximum-run timer and low-water protection.
       </p>
     </article>
   );
@@ -210,6 +378,8 @@ const Irrigation = () => {
   const { location, isSet } = useUserLocation();
   const configuredLocation = isSet ? location : null;
   const [showLocationPicker, setShowLocationPicker] = useState(!isSet);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const {
     data: farmData,
@@ -236,6 +406,100 @@ const Irrigation = () => {
     staleTime: 15 * 60 * 1000,
     retry: 2,
   });
+
+  useEffect(() => {
+    if (!configuredLocation) return;
+    void apiRequest("/api/irrigation/location", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: configuredLocation.lat, lon: configuredLocation.lon }),
+    }).catch(() => {
+      toast({
+        title: "Farm location could not be synced",
+        description: "Automatic irrigation needs a saved farm location to check rain forecasts.",
+        variant: "destructive",
+      });
+    });
+  }, [configuredLocation?.lat, configuredLocation?.lon, toast]);
+
+  const pumpQuery = useQuery<PumpControlResponse>({
+    queryKey: ["/api/irrigation/pumps"],
+    refetchInterval: 5000,
+    staleTime: 0,
+  });
+
+  const updatePumpMutation = useMutation({
+    mutationFn: async (input: { fieldId: number; mode: "off" | "manual" | "auto"; manualOn?: boolean }) => {
+      await apiRequest(`/api/irrigation/pumps/${input.fieldId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: input.mode, manualOn: input.manualOn }),
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/irrigation/pumps"] }),
+    onError: (error) => toast({
+      title: "Pump command was not accepted",
+      description: error instanceof Error ? error.message : "Check the safety status and try again.",
+      variant: "destructive",
+    }),
+  });
+
+  const commissioningMutation = useMutation({
+    mutationFn: async (input: {
+      fieldId: number;
+      powerVerified: boolean;
+      relayVerified: boolean;
+      lowWaterVerified: boolean;
+      maxRunSeconds: number;
+    }) => {
+      await apiRequest(`/api/irrigation/pumps/${input.fieldId}/commissioning`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          powerVerified: input.powerVerified,
+          relayVerified: input.relayVerified,
+          lowWaterVerified: input.lowWaterVerified,
+          maxRunSeconds: input.maxRunSeconds,
+        }),
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Safety checks saved", description: "Pump controls unlock only when the ESP32 reports its outputs enabled." });
+      void queryClient.invalidateQueries({ queryKey: ["/api/irrigation/pumps"] });
+    },
+    onError: (error) => toast({
+      title: "Safety checks could not be saved",
+      description: error instanceof Error ? error.message : "Please try again.",
+      variant: "destructive",
+    }),
+  });
+
+  const setPumpMode = async (pump: PumpControl, mode: "off" | "auto") => {
+    try {
+      await updatePumpMutation.mutateAsync({ fieldId: pump.fieldId, mode });
+    } catch {
+      // Mutation feedback is shown by onError.
+    }
+  };
+
+  const setManualPump = async (pump: PumpControl, manualOn: boolean) => {
+    try {
+      await updatePumpMutation.mutateAsync({ fieldId: pump.fieldId, mode: "manual", manualOn });
+    } catch {
+      // Mutation feedback is shown by onError.
+    }
+  };
+
+  const savePumpCommissioning = async (
+    pump: PumpControl,
+    values: { powerVerified: boolean; relayVerified: boolean; lowWaterVerified: boolean; maxRunSeconds: number },
+  ) => {
+    try {
+      await commissioningMutation.mutateAsync({ fieldId: pump.fieldId, ...values });
+    } catch {
+      // Mutation feedback is shown by onError.
+    }
+  };
 
   const fields = farmData?.soilMoisture?.fields ?? [];
   const reportingCount = fields.filter((field) =>
@@ -477,13 +741,45 @@ const Irrigation = () => {
           <section aria-labelledby="pump-title">
             <div className="mb-3 px-1">
               <h2 id="pump-title" className="text-base font-bold card-heading">Pump controls</h2>
-              <p className="mt-0.5 text-xs card-muted">Manual controls are shown for clarity but are not connected.</p>
+              <p className="mt-0.5 text-xs card-muted">
+                Automatic mode starts below 35% soil moisture only when today’s rain chance is below 50%.
+              </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <PumpControlCard fieldName="Field 1" />
-              <PumpControlCard fieldName="Field 2" />
-            </div>
+            {pumpQuery.isLoading ? (
+              <div className="grid gap-3 sm:grid-cols-2" aria-label="Loading pump controls">
+                {[0, 1].map((item) => <div key={item} className="glass-card h-52 animate-pulse rounded-2xl" />)}
+              </div>
+            ) : pumpQuery.isError ? (
+              <div className="glass-card rounded-2xl p-4" role="alert">
+                <p className="text-sm font-semibold card-heading">Pump settings could not be loaded</p>
+                <button
+                  type="button"
+                  onClick={() => void pumpQuery.refetch()}
+                  className="mt-2 rounded-lg border divider px-3 py-2 text-xs font-semibold card-body"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(pumpQuery.data?.pumps ?? []).map((pump) => (
+                  <PumpControlCard
+                    key={pump.fieldId}
+                    pump={pump}
+                    busy={updatePumpMutation.isPending || commissioningMutation.isPending}
+                    onMode={setPumpMode}
+                    onManual={setManualPump}
+                    onCommission={savePumpCommissioning}
+                  />
+                ))}
+                {!pumpQuery.data?.pumps.length && (
+                  <div className="glass-card rounded-2xl p-4 text-xs card-body">
+                    Add two fields to this farm before assigning pump controls.
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="mt-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-4 sm:p-5">
               <div className="flex items-start gap-3">
@@ -493,7 +789,7 @@ const Irrigation = () => {
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold text-amber-950 dark:text-amber-100">Safety commissioning required</h3>
                   <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/70">
-                    Pump commands are not supported by the current telemetry-only firmware. Controls will remain disabled until every safeguard is verified.
+                    The ESP32 must report its relay outputs enabled. Missing or stale sensor/weather data blocks automatic starts; each run is limited by its saved maximum duration.
                   </p>
                 </div>
               </div>
@@ -506,6 +802,45 @@ const Irrigation = () => {
                 ))}
               </ul>
             </div>
+
+            <details className="glass-tile mt-3 rounded-2xl p-4 sm:p-5">
+              <summary className="cursor-pointer text-sm font-bold card-heading">
+                Two-pump relay wiring tutorial
+              </summary>
+              <div className="mt-4 space-y-4 text-xs leading-relaxed card-body">
+                <p>
+                  Your COM/NO/NC switching layout is right. Because the pumps are labeled 5V DC,
+                  use a regulated 5V pump supply in place of the 9V batteries. Do not connect 9V
+                  directly to a 5V pump or to relay VCC. No series resistor is needed.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {["Field 1 / Relay 1 / Pump 1", "Field 2 / Relay 2 / Pump 2"].map((label) => (
+                    <div key={label} className="rounded-xl border divider p-3">
+                      <p className="mb-2 font-bold card-heading">{label}</p>
+                      <ol className="list-decimal space-y-1 pl-4">
+                        <li>5V supply positive → inline fuse → relay COM</li>
+                        <li>Relay NO → pump positive</li>
+                        <li>Pump negative → 5V supply negative</li>
+                        <li>Leave relay NC unconnected</li>
+                      </ol>
+                    </div>
+                  ))}
+                </div>
+                <p>
+                  Size the 5V supply and each fuse for the pump’s startup current. Use the terminal
+                  labels printed on the relay board. Relay VCC is a separate 5V control connection;
+                  never connect the 9V battery to VCC or an ESP32 GPIO. The relay input pins and
+                  pump controls stay disabled until the ESP32 pin mapping, trigger polarity, and
+                  low-water/run-time safeguards are verified.
+                </p>
+                <p>
+                  The current firmware uses GPIO 25 for Field 1 and GPIO 26 for Field 2 relay inputs.
+                  Keep its pump-output arm switch off until the relay ON/OFF polarity has been tested
+                  with pump power disconnected. The selected farm location is saved for the ESP32’s
+                  rain check.
+                </p>
+              </div>
+            </details>
           </section>
         </div>
       </main>

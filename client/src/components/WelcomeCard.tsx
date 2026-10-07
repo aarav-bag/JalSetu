@@ -41,7 +41,7 @@ const WelcomeCard = ({ farmerName, farmStatus }: WelcomeCardProps) => {
 
   const quickStats = [
     { label: 'Farm Health', value: '94%', icon: TrendingUp, color: 'text-emerald-600 dark:text-emerald-300' },
-    { label: 'Water Level', value: '78%', icon: Droplets,   color: 'text-blue-600 dark:text-cyan-300' },
+    { label: 'Water Level', value: '78%', icon: Droplets, color: 'text-blue-600 dark:text-cyan-300' },
     { label: 'Crop Stage',  value: 'Grow', icon: Leaf,       color: 'text-green-600 dark:text-green-300' },
   ];
 

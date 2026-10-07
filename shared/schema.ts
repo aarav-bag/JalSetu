@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, primaryKey, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -24,6 +24,8 @@ export const farms = pgTable("farms", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: text("status").default("Your farm is thriving"),
   esp32ApiKey: text("esp32_api_key"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -84,6 +86,22 @@ export const farmAlerts = pgTable("farm_alerts", {
   isResolved: boolean("is_resolved").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at"),
+});
+
+export const irrigationPumpControls = pgTable("irrigation_pump_controls", {
+  fieldId: integer("field_id").primaryKey().references(() => fields.id, { onDelete: "cascade" }),
+  farmId: integer("farm_id").notNull().references(() => farms.id, { onDelete: "cascade" }),
+  mode: text("mode").notNull().default("off"),
+  manualOn: boolean("manual_on").notNull().default(false),
+  powerVerified: boolean("power_verified").notNull().default(false),
+  relayVerified: boolean("relay_verified").notNull().default(false),
+  lowWaterVerified: boolean("low_water_verified").notNull().default(false),
+  maxRunSeconds: integer("max_run_seconds").notNull().default(60),
+  firmwareEnabled: boolean("firmware_enabled").notNull().default(false),
+  actualOn: boolean("actual_on").notNull().default(false),
+  actualUpdatedAt: timestamp("actual_updated_at"),
+  cooldownUntil: timestamp("cooldown_until"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Define relations after all tables are defined

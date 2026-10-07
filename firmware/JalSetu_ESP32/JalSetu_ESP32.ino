@@ -23,9 +23,10 @@
  * Active monitoring hardware:
  *   • TDS analog sensor
  *   • Soil moisture probes for Field 1 and Field 2
- *   • REL_35-style analog water-level sensor (raw ADC only; calibrate separately)
  *
- * No camera, simulated pH, pump, or relay control is included.
+ * pH is simulated temporarily; no physical pH probe is connected.
+ * No camera or water-level sensor is included.
+ * Pump relay commands are supported and outputs initialize OFF.
  */
 
 #include <WiFi.h>
@@ -37,16 +38,24 @@
 const char* SERVER_URL = "https://jalsetu-rbeg.onrender.com/api/esp32/sensor-data";
 const char* SECRET     = "JALSETU2024";
 const int   FARM_ID    = 1;
+const char* PUMP_TARGETS_URL = "https://jalsetu-rbeg.onrender.com/api/esp32/pump-targets";
+const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump-status";
 
 // ─── Sensor pins ──────────────────────────────────────────────
 #define PIN_TDS          34   // TDS sensor analog out
 #define PIN_SOIL_FIELD1  32   // Soil moisture — Field 1
 #define PIN_SOIL_FIELD2  36   // Soil moisture — Field 2 (VP pin)
-#define PIN_WATER_LEVEL  35   // Water level sensor analog out (ADC1)
 
 // ─── Control pins ─────────────────────────────────────────────
 #define PIN_LED          2    // Onboard LED (GPIO 2)
 #define PIN_RESET_WIFI   0    // BOOT button — hold 3 s to reset WiFi
+#define PIN_PUMP_FIELD1  25   // Relay 1 IN — verify board pin labels
+#define PIN_PUMP_FIELD2  26   // Relay 2 IN — verify board pin labels
+
+// Hardware commissioning has been confirmed by the user.
+// Keep the relay outputs inactive at boot; only server-approved targets can turn them on.
+#define PUMP_OUTPUTS_ARMED true
+#define PUMP_RELAY_ACTIVE_LOW true
 
 // ─── Soil calibration ─────────────────────────────────────────
 #define SOIL1_DRY        4095
@@ -57,8 +66,17 @@ const int   FARM_ID    = 1;
 // ─── Timing ───────────────────────────────────────────────────
 const unsigned long INTERVAL_MS      = 30000;  // 30 s between uploads
 const unsigned long RESET_HOLD_MS    = 3000;   // hold 3 s to reset WiFi
+const unsigned long PUMP_POLL_MS     = 5000;   // poll app commands every 5 s
+const unsigned long PUMP_OFFLINE_MS  = 15000;  // force off without server contact
+const unsigned long PUMP_MAX_RUN_MS  = 600000; // firmware hard cap: 10 minutes
 
 unsigned long lastSend = 0;
+unsigned long lastPumpPoll = 0;
+unsigned long lastPumpServerContact = 0;
+bool pumpIsOn[2] = { false, false };
+bool pumpRuntimeExpired[2] = { false, false };
+unsigned long pumpStartedAt[2] = { 0, 0 };
+unsigned long pumpMaxRunMs[2] = { 60000, 60000 };
 
 // ══════════════════════════════════════════════════════════════
 //  LED helpers
@@ -142,6 +160,12 @@ float readTDS() {
   return max(0.0f, tds);
 }
 
+// Temporary demonstration value until a physical pH probe is installed and calibrated.
+// Generates one-decimal values from 7.0 through 7.4; this is not a sensor measurement.
+float readSimulatedPH() {
+  return random(70, 75) / 10.0f;
+}
+
 // ══════════════════════════════════════════════════════════════
 //  Read Soil Moisture  (0–100 %)
 // ══════════════════════════════════════════════════════════════
@@ -153,23 +177,10 @@ float readSoil(int pin, int dryVal, int wetVal) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  Read water-level sensor raw ADC value (0–4095)
-//  Convert to percentage only after dry/full calibration.
-// ══════════════════════════════════════════════════════════════
-int readWaterLevelRaw() {
-  long sum = 0;
-  const int samples = 20;
-  for (int i = 0; i < samples; i++) {
-    sum += analogRead(PIN_WATER_LEVEL);
-    delay(5);
-  }
-  return (int)(sum / samples);
-}
-
 // ══════════════════════════════════════════════════════════════
 //  POST sensor data to JalSetu server
 // ══════════════════════════════════════════════════════════════
-void sendToServer(int fieldId, float tds, float soil, int waterLevelRaw) {
+void sendToServer(int fieldId, float tds, float ph, float soil) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Not connected — skipping upload");
     return;
@@ -184,16 +195,161 @@ void sendToServer(int fieldId, float tds, float soil, int waterLevelRaw) {
   doc["farmId"]       = FARM_ID;
   doc["fieldId"]      = fieldId;
   doc["tds"]          = (int)tds;
+  doc["ph"]           = ph;
   doc["soilMoisture"] = (int)soil;
-  doc["waterLevelRaw"] = waterLevelRaw;
 
   String body;
   serializeJson(doc, body);
 
-  Serial.println("[POST] " + body);
   int code = http.POST(body);
   Serial.printf("[Server] Field %d → HTTP %d\n", fieldId, code);
   http.end();
+}
+
+int pumpRelayPin(int pumpIndex) {
+  return pumpIndex == 0 ? PIN_PUMP_FIELD1 : PIN_PUMP_FIELD2;
+}
+
+void setPumpOutput(int pumpIndex, bool on) {
+  if (pumpIndex < 0 || pumpIndex > 1) return;
+  if (!PUMP_OUTPUTS_ARMED) {
+    pumpIsOn[pumpIndex] = false;
+    return;
+  }
+
+  const int pin = pumpRelayPin(pumpIndex);
+  const int relayLevel = (on != PUMP_RELAY_ACTIVE_LOW) ? HIGH : LOW;
+  digitalWrite(pin, relayLevel);
+  if (on && !pumpIsOn[pumpIndex]) {
+    pumpStartedAt[pumpIndex] = millis();
+  }
+  if (!on) pumpStartedAt[pumpIndex] = 0;
+  pumpIsOn[pumpIndex] = on;
+}
+
+void initializePumpOutputs() {
+  if (!PUMP_OUTPUTS_ARMED) {
+    pinMode(PIN_PUMP_FIELD1, INPUT);
+    pinMode(PIN_PUMP_FIELD2, INPUT);
+    Serial.println("[Pump] Outputs compile-time locked; keep relay IN wiring disconnected until commissioning");
+    return;
+  }
+
+  // Set the configured inactive level before enabling output mode.
+  digitalWrite(PIN_PUMP_FIELD1, PUMP_RELAY_ACTIVE_LOW ? HIGH : LOW);
+  digitalWrite(PIN_PUMP_FIELD2, PUMP_RELAY_ACTIVE_LOW ? HIGH : LOW);
+  pinMode(PIN_PUMP_FIELD1, OUTPUT);
+  pinMode(PIN_PUMP_FIELD2, OUTPUT);
+  Serial.printf("[Pump] Relay outputs armed on GPIO %d and %d\n", PIN_PUMP_FIELD1, PIN_PUMP_FIELD2);
+}
+
+void sendPumpStatus() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  http.begin(PUMP_STATUS_URL);
+  http.setTimeout(4000);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Jalsetu-Device-Secret", SECRET);
+
+  StaticJsonDocument<384> doc;
+  doc["farmId"] = FARM_ID;
+  doc["firmwareEnabled"] = PUMP_OUTPUTS_ARMED;
+  JsonArray states = doc.createNestedArray("states");
+  for (int i = 0; i < 2; i++) {
+    JsonObject state = states.createNestedObject();
+    state["fieldIndex"] = i + 1;
+    state["actualOn"] = pumpIsOn[i];
+    state["runtimeExpired"] = pumpRuntimeExpired[i];
+  }
+
+  String body;
+  serializeJson(doc, body);
+  const int code = http.POST(body);
+  if (code >= 200 && code < 300) {
+    pumpRuntimeExpired[0] = false;
+    pumpRuntimeExpired[1] = false;
+  } else {
+    Serial.printf("[Pump] Status report failed: HTTP %d\n", code);
+  }
+  http.end();
+}
+
+void enforcePumpSafety() {
+  if (!PUMP_OUTPUTS_ARMED) return;
+  const unsigned long now = millis();
+  for (int i = 0; i < 2; i++) {
+    if (!pumpIsOn[i]) continue;
+    if (now - pumpStartedAt[i] >= pumpMaxRunMs[i]) {
+      setPumpOutput(i, false);
+      pumpRuntimeExpired[i] = true;
+      Serial.printf("[Pump] Field %d stopped at configured run limit\n", i + 1);
+    } else if (
+      lastPumpServerContact == 0
+      || now - lastPumpServerContact > PUMP_OFFLINE_MS
+    ) {
+      setPumpOutput(i, false);
+      pumpRuntimeExpired[i] = true;
+      Serial.printf("[Pump] Field %d stopped: server connection lost\n", i + 1);
+    }
+  }
+}
+
+void pollPumpTargets() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  const String url = String(PUMP_TARGETS_URL) + "?farmId=" + String(FARM_ID);
+  http.begin(url);
+  http.setTimeout(5000);
+  http.addHeader("X-Jalsetu-Device-Secret", SECRET);
+  const int code = http.GET();
+
+  if (code != HTTP_CODE_OK) {
+    Serial.printf("[Pump] Target poll failed: HTTP %d\n", code);
+    http.end();
+    enforcePumpSafety();
+    return;
+  }
+
+  StaticJsonDocument<1536> doc;
+  const DeserializationError error = deserializeJson(doc, http.getString());
+  http.end();
+  if (error) {
+    Serial.println("[Pump] Invalid target response; retaining fail-safe state");
+    enforcePumpSafety();
+    return;
+  }
+
+  lastPumpServerContact = millis();
+  bool seen[2] = { false, false };
+  JsonArray targets = doc["targets"].as<JsonArray>();
+  for (JsonObject target : targets) {
+    const int fieldIndex = target["fieldIndex"] | 0;
+    if (fieldIndex < 1 || fieldIndex > 2) continue;
+    const int index = fieldIndex - 1;
+    seen[index] = true;
+
+    bool desiredOn = target["desiredOn"] | false;
+    unsigned long maxRunMs = (target["maxRunSeconds"] | 60UL) * 1000UL;
+    if (maxRunMs > PUMP_MAX_RUN_MS) maxRunMs = PUMP_MAX_RUN_MS;
+    pumpMaxRunMs[index] = maxRunMs;
+
+    if (pumpRuntimeExpired[index]) {
+      desiredOn = false;
+    } else if (desiredOn && pumpIsOn[index] && millis() - pumpStartedAt[index] >= maxRunMs) {
+      desiredOn = false;
+      pumpRuntimeExpired[index] = true;
+      Serial.printf("[Pump] Field %d stopped at configured run limit\n", fieldIndex);
+    }
+    if (!PUMP_OUTPUTS_ARMED) desiredOn = false;
+    setPumpOutput(index, desiredOn);
+  }
+
+  for (int i = 0; i < 2; i++) {
+    if (!seen[i]) setPumpOutput(i, false);
+  }
+  sendPumpStatus();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -202,9 +358,11 @@ void sendToServer(int fieldId, float tds, float soil, int waterLevelRaw) {
 void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
+  randomSeed(analogRead(33));
 
   pinMode(PIN_LED,        OUTPUT);
   pinMode(PIN_RESET_WIFI, INPUT_PULLUP);
+  initializePumpOutputs();
 
   ledOff();   // off while connecting
 
@@ -223,20 +381,26 @@ void loop() {
   checkWiFiReset();
 
   unsigned long now = millis();
+  enforcePumpSafety();
+  if (now - lastPumpPoll >= PUMP_POLL_MS) {
+    lastPumpPoll = now;
+    pollPumpTargets();
+  }
+
   if (now - lastSend < INTERVAL_MS) return;
   lastSend = now;
 
   float tds   = readTDS();
+  float ph    = readSimulatedPH();
   float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
   float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
-  int waterLevelRaw = readWaterLevelRaw();
 
-  Serial.printf("[Sensors] TDS: %.0f ppm | F1: %.0f%% | F2: %.0f%% | Water level ADC: %d\n",
-                tds, soil1, soil2, waterLevelRaw);
+  Serial.printf("[Sensors] TDS: %.0f ppm | pH (SIMULATED): %.1f | F1: %.0f%% | F2: %.0f%%\n",
+                tds, ph, soil1, soil2);
 
   blinkLed();
-  sendToServer(1, tds, soil1, waterLevelRaw);
-  sendToServer(2, tds, soil2, waterLevelRaw);
+  sendToServer(1, tds, ph, soil1);
+  sendToServer(2, tds, ph, soil2);
 
   ledOn();   // back to solid ON = idle
 }

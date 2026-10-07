@@ -24,11 +24,30 @@ export async function initDb() {
         created_at TIMESTAMP DEFAULT NOW() NOT NULL
       );
 
+      ALTER TABLE farms ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+      ALTER TABLE farms ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+
       CREATE TABLE IF NOT EXISTS fields (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
         created_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS irrigation_pump_controls (
+        field_id INTEGER PRIMARY KEY REFERENCES fields(id) ON DELETE CASCADE,
+        farm_id INTEGER NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
+        mode TEXT NOT NULL DEFAULT 'off' CHECK (mode IN ('off', 'manual', 'auto')),
+        manual_on BOOLEAN NOT NULL DEFAULT FALSE,
+        power_verified BOOLEAN NOT NULL DEFAULT FALSE,
+        relay_verified BOOLEAN NOT NULL DEFAULT FALSE,
+        low_water_verified BOOLEAN NOT NULL DEFAULT FALSE,
+        max_run_seconds INTEGER NOT NULL DEFAULT 60 CHECK (max_run_seconds BETWEEN 5 AND 600),
+        firmware_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        actual_on BOOLEAN NOT NULL DEFAULT FALSE,
+        actual_updated_at TIMESTAMPTZ,
+        cooldown_until TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS water_qualities (

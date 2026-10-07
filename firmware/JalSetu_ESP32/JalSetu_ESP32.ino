@@ -24,7 +24,8 @@
  *   • TDS analog sensor
  *   • Soil moisture probes for Field 1 and Field 2
  *
- * No camera, pH sensor, or water-level sensor is included.
+ * pH is simulated temporarily; no physical pH probe is connected.
+ * No camera or water-level sensor is included.
  * Pump relay commands are supported and outputs initialize OFF.
  */
 
@@ -159,6 +160,12 @@ float readTDS() {
   return max(0.0f, tds);
 }
 
+// Temporary demonstration value until a physical pH probe is installed and calibrated.
+// Generates one-decimal values from 7.0 through 7.4; this is not a sensor measurement.
+float readSimulatedPH() {
+  return random(70, 75) / 10.0f;
+}
+
 // ══════════════════════════════════════════════════════════════
 //  Read Soil Moisture  (0–100 %)
 // ══════════════════════════════════════════════════════════════
@@ -173,7 +180,7 @@ float readSoil(int pin, int dryVal, int wetVal) {
 // ══════════════════════════════════════════════════════════════
 //  POST sensor data to JalSetu server
 // ══════════════════════════════════════════════════════════════
-void sendToServer(int fieldId, float tds, float soil) {
+void sendToServer(int fieldId, float tds, float ph, float soil) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Not connected — skipping upload");
     return;
@@ -188,6 +195,7 @@ void sendToServer(int fieldId, float tds, float soil) {
   doc["farmId"]       = FARM_ID;
   doc["fieldId"]      = fieldId;
   doc["tds"]          = (int)tds;
+  doc["ph"]           = ph;
   doc["soilMoisture"] = (int)soil;
 
   String body;
@@ -350,6 +358,7 @@ void pollPumpTargets() {
 void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
+  randomSeed(analogRead(33));
 
   pinMode(PIN_LED,        OUTPUT);
   pinMode(PIN_RESET_WIFI, INPUT_PULLUP);
@@ -382,15 +391,16 @@ void loop() {
   lastSend = now;
 
   float tds   = readTDS();
+  float ph    = readSimulatedPH();
   float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
   float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
 
-  Serial.printf("[Sensors] TDS: %.0f ppm | F1: %.0f%% | F2: %.0f%%\n",
-                tds, soil1, soil2);
+  Serial.printf("[Sensors] TDS: %.0f ppm | pH (SIMULATED): %.1f | F1: %.0f%% | F2: %.0f%%\n",
+                tds, ph, soil1, soil2);
 
   blinkLed();
-  sendToServer(1, tds, soil1);
-  sendToServer(2, tds, soil2);
+  sendToServer(1, tds, ph, soil1);
+  sendToServer(2, tds, ph, soil2);
 
   ledOn();   // back to solid ON = idle
 }

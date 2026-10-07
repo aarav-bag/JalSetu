@@ -44,7 +44,7 @@ The LED blinks fast → credentials wiped → hotspot reopens → follow steps 2
 | GPIO 2  | Onboard LED (status indicator) |
 | GPIO 0  | BOOT button — hold 3 s to reset WiFi |
 
-This firmware is for the sensor/pump-control ESP32, not the separate camera board. It reads TDS and both soil probes. Water-level and pH sensors are not included. It supports app-to-ESP32 pump commands; relay outputs initialize OFF.
+This firmware is for the sensor/pump-control ESP32, not the separate camera board. It reads TDS and both soil probes. pH is temporarily simulated from 7.0 to 7.4 in 0.1 steps; no physical pH probe is connected. Water-level sensing remains removed. It supports app-to-ESP32 pump commands; relay outputs initialize OFF.
 
 ## Sensor wiring
 
@@ -56,7 +56,7 @@ This firmware is for the sensor/pump-control ESP32, not the separate camera boar
 | Each sensor `GND` | ESP32 GND (shared ground) |
 | Each sensor `VCC` | Power the module at its rated voltage; ensure every analog output stays at or below 3.3 V |
 
-GPIO 34 and GPIO 36 are input-only ADC pins, which is suitable for these analog sensor outputs. GPIO 35 is unused now that water-level sensing has been removed. No pH sensor is connected.
+GPIO 34 and GPIO 36 are input-only ADC pins, which is suitable for these analog sensor outputs. GPIO 35 is unused now that water-level sensing has been removed. The simulated pH value uses no sensor pin.
 
 ## Two-pump relay setup
 

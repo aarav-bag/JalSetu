@@ -47,7 +47,7 @@ const WaterQualityDetails = () => {
     return { bg: 'rgba(255,255,255,0.08)', color: 'card-label', border: 'rgba(255,255,255,0.15)' };
   };
 
-  // Build current-readings metrics from the latest real DB record
+  // Build current-readings metrics from the latest water-quality DB record
   const metrics = latest ? (() => {
     const ph  = parseFloat(latest.phLevel  ?? "0");
     const tds = parseFloat((latest.tds ?? "0").toString().replace(/[^\d.]/g, ""));

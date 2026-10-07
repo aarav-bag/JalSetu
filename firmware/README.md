@@ -44,7 +44,7 @@ The LED blinks fast → credentials wiped → hotspot reopens → follow steps 2
 | GPIO 2  | Onboard LED (status indicator) |
 | GPIO 0  | BOOT button — hold 3 s to reset WiFi |
 
-This firmware is for the sensor/pump-control ESP32, not the separate camera board. It reads TDS and both soil probes. TDS uses a median filter and a moving average to reduce electrical noise; it is not clamped to a chosen range. If the analog input is pinned near ground or 3.3V, the firmware omits TDS from the upload and the app reports no reading. pH is temporarily simulated from 7.0 to 7.4 in 0.1 steps; no physical pH probe is connected. Water-level sensing remains removed. It supports app-to-ESP32 pump commands; relay outputs initialize OFF.
+This firmware is for the sensor/pump-control ESP32, not the separate camera board. The school-demo configuration generates TDS values from 200–500 ppm with small gradual changes and pH values from 7.0–7.4 in 0.1 steps. Set `DEMO_QUALITY_VALUES` to `false` to use the TDS ADC instead; pH is then omitted until a physical probe is added and calibrated. The presentation poster identifies the generated readings as demo values. Soil probes remain live inputs. Water-level sensing remains removed. It supports app-to-ESP32 pump commands; relay outputs initialize OFF.
 
 ## Sensor wiring
 
@@ -56,7 +56,7 @@ This firmware is for the sensor/pump-control ESP32, not the separate camera boar
 | Each sensor `GND` | ESP32 GND (shared ground) |
 | Each sensor `VCC` | Power the module at its rated voltage; ensure every analog output stays at or below 3.3 V |
 
-GPIO 34 and GPIO 36 are input-only ADC pins, which is suitable for these analog sensor outputs. GPIO 35 is unused now that water-level sensing has been removed. The simulated pH value uses no sensor pin.
+GPIO 34 and GPIO 36 are input-only ADC pins, which is suitable for these analog sensor outputs. GPIO 35 is unused now that water-level sensing has been removed. The generated pH value uses no sensor pin.
 
 ## Two-pump relay setup
 

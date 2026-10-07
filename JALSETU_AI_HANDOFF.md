@@ -738,7 +738,7 @@ Limitations:
 
 ### pH module
 
-The current firmware sends temporary simulated pH values from 7.0 to 7.4 in 0.1 steps. No physical pH sensor is installed; do not treat these values or their derived advice as actual water measurements.
+The school-demo firmware sends pH values from 7.0 to 7.4 in 0.1 steps and TDS values from 200 to 500 ppm with gradual changes. These values are generated for the demonstration; the presentation poster discloses this. No physical pH sensor is installed.
 
 To make pH real, the firmware needs:
 
@@ -789,7 +789,7 @@ Every 30 seconds:
 4. POST one payload for Field 1.
 5. POST one payload for Field 2.
 
-Both field uploads currently carry the same TDS and simulated pH readings, while soil moisture differs by field. No water-level value is sent.
+Both field uploads currently carry the same generated demo TDS and pH readings, while soil moisture differs by field. No water-level value is sent.
 
 The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs are compile-time enabled after the user confirmed the hardware commissioning checks; outputs initialize OFF and only authenticated server targets can start a pump. Keep the per-field app commissioning checks and run-time limits in place. The current controller does not:
 
@@ -1117,7 +1117,7 @@ This section is critical for another AI so it does not incorrectly claim the pro
 
 ### Firmware limitations
 
-- No physical pH probe is installed; current pH telemetry is simulated. The app intentionally displays pH without a simulated label at the user's request.
+- No physical pH probe is installed; pH telemetry is generated for the school demonstration. The app and serial output have no source tag; the poster discloses the demo values.
 - TDS requires calibration and has limited compensation.
 - Soil sensors use fixed calibration constants.
 - Pump target polling, per-field controls, and relay outputs are enabled; the user confirmed hardware commissioning is complete.
@@ -1303,7 +1303,7 @@ When testing sensor features:
 ## 19. Fast context summary for an AI prompt
 
 ```text
-JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors and TDS, sends temporary simulated pH values from 7.0 to 7.4, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. No water-level sensor is in the current firmware. The app displays pH without a simulated label at the user's request; the values are nevertheless not physical measurements. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; pause for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls retain per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` is enabled, with outputs initialized OFF. The user reports the hardware commissioning and calibration checks are complete. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
+JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The school-demo firmware generates TDS values from 200 to 500 ppm with gradual changes and pH values from 7.0 to 7.4 in 0.1 steps; the presentation poster discloses the generated values. The ESP32 reads two soil sensors, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. No water-level sensor is in the current firmware. The app and serial output show the generated quality values without source tags. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; pause for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls retain per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` is enabled, with outputs initialized OFF. The user reports the hardware commissioning and calibration checks are complete. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
 ```
 
 ---

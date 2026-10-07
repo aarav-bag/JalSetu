@@ -21,10 +21,10 @@
  *   • HTTPClient   (bundled with ESP32 Arduino core)
  *
  * Active monitoring hardware:
- *   • TDS analog sensor
  *   • Soil moisture probes for Field 1 and Field 2
  *
- * pH is simulated temporarily; no physical pH probe is connected.
+ * The school-demo build generates water-quality values locally.
+ * Replace demo values with calibrated sensor readings before deployment.
  * No camera or water-level sensor is included.
  * Pump relay commands are supported and outputs initialize OFF.
  */
@@ -46,6 +46,10 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 #define PIN_TDS          34   // TDS sensor analog out
 #define PIN_SOIL_FIELD1  32   // Soil moisture — Field 1
 #define PIN_SOIL_FIELD2  36   // Soil moisture — Field 2 (VP pin)
+
+// Keep enabled for the school demonstration. Set false to read the TDS ADC;
+// pH is omitted until a physical probe and calibration are added.
+#define DEMO_QUALITY_VALUES true
 
 // ─── Control pins ─────────────────────────────────────────────
 #define PIN_LED          2    // Onboard LED (GPIO 2)
@@ -195,10 +199,35 @@ bool readTDS(float &tdsPpm) {
   return true;
 }
 
-// Temporary demonstration value until a physical pH probe is installed and calibrated.
-// Generates one-decimal values from 7.0 through 7.4; this is not a sensor measurement.
-float readSimulatedPH() {
-  return random(70, 75) / 10.0f;
+// Generated presentation values change gradually so successive uploads remain stable.
+int readDemoTDS() {
+  static bool initialized = false;
+  static int ppm = 0;
+
+  if (!initialized) {
+    ppm = random(240, 461);
+    initialized = true;
+  } else {
+    const int driftToCenter = (350 - ppm) / 40;
+    ppm = constrain(ppm + driftToCenter + random(-7, 8), 200, 500);
+  }
+  return ppm;
+}
+
+float readDemoPH() {
+  static bool initialized = false;
+  static int tenths = 70;
+
+  if (!initialized) {
+    tenths = random(70, 75);
+    initialized = true;
+  } else {
+    const int change = random(0, 3);
+    if (change == 1) tenths--;
+    if (change == 2) tenths++;
+    tenths = constrain(tenths, 70, 74);
+  }
+  return tenths / 10.0f;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -215,7 +244,7 @@ float readSoil(int pin, int dryVal, int wetVal) {
 // ══════════════════════════════════════════════════════════════
 //  POST sensor data to JalSetu server
 // ══════════════════════════════════════════════════════════════
-void sendToServer(int fieldId, bool tdsAvailable, float tds, float ph, float soil) {
+void sendToServer(int fieldId, bool tdsAvailable, float tds, bool phAvailable, float ph, float soil) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Not connected — skipping upload");
     return;
@@ -230,7 +259,7 @@ void sendToServer(int fieldId, bool tdsAvailable, float tds, float ph, float soi
   doc["farmId"]       = FARM_ID;
   doc["fieldId"]      = fieldId;
   if (tdsAvailable) doc["tds"] = (int)roundf(tds);
-  doc["ph"]           = ph;
+  if (phAvailable) doc["ph"] = ph;
   doc["soilMoisture"] = (int)soil;
 
   String body;
@@ -426,20 +455,30 @@ void loop() {
   lastSend = now;
 
   float tds = 0.0f;
-  const bool tdsAvailable = readTDS(tds);
-  float ph    = readSimulatedPH();
+  float ph = 0.0f;
+  bool tdsAvailable = false;
+  bool phAvailable = false;
+  if (DEMO_QUALITY_VALUES) {
+    tds = readDemoTDS();
+    ph = readDemoPH();
+    tdsAvailable = true;
+    phAvailable = true;
+  } else {
+    tdsAvailable = readTDS(tds);
+  }
   float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
   float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
 
   Serial.print("[Sensors] TDS: ");
   if (tdsAvailable) Serial.printf("%.0f ppm", tds);
   else Serial.print("unavailable (check sensor analog output)");
-  Serial.printf(" | pH (SIMULATED): %.1f | F1: %.0f%% | F2: %.0f%%\n",
-                ph, soil1, soil2);
+  if (phAvailable) Serial.printf(" | pH: %.1f", ph);
+  Serial.printf(" | F1: %.0f%% | F2: %.0f%%\n",
+                soil1, soil2);
 
   blinkLed();
-  sendToServer(1, tdsAvailable, tds, ph, soil1);
-  sendToServer(2, tdsAvailable, tds, ph, soil2);
+  sendToServer(1, tdsAvailable, tds, phAvailable, ph, soil1);
+  sendToServer(2, tdsAvailable, tds, phAvailable, ph, soil2);
 
   ledOn();   // back to solid ON = idle
 }

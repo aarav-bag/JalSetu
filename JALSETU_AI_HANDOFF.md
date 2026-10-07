@@ -4,7 +4,7 @@
 
 This is a technical and product handoff for the JalSetu project. It is written so another AI coding assistant can understand the project before making changes.
 
-This document describes the current implementation, not only the planned future system. The prototype now has two-field app controls and ESP32 command polling, but pump outputs are hard-disabled by default and must stay disabled until actuator safety commissioning is complete. Automatic valves, MQTT, and production-ready irrigation automation are not implemented.
+This document describes the current implementation, not only the planned future system. The prototype has two-field app controls and authenticated ESP32 command polling. Relay outputs are enabled in the current firmware, initialize OFF, and only follow server-approved targets after each field passes its safety checks. Automatic valves, MQTT, and production-ready irrigation automation are not implemented.
 
 Do not copy or expose credentials while working on this project. The repository contains environment-variable references and the firmware currently contains a device authentication value; those values should be treated as secrets and rotated/moved to secure provisioning before production use.
 
@@ -29,7 +29,7 @@ JalSetu currently combines:
 - Real-time-style polling for alerts
 - Persistent alert history for triggered and resolved conditions
 
-The current application combines monitoring with a safety-gated two-pump prototype. It supports per-field manual commands and rain-aware automatic targets, but the firmware output arm switch defaults off. It is not a production irrigation controller and has no flow feedback.
+The current application combines monitoring with a safety-gated two-pump prototype. It supports per-field manual commands and rain-aware automatic targets. Firmware outputs initialize OFF and require server-approved targets. It is not a production irrigation controller and has no flow feedback.
 
 ---
 
@@ -719,16 +719,16 @@ The TDS sensor is read from GPIO 34.
 
 Current algorithm:
 
-1. Take 30 analog samples.
-2. Average them.
-3. Convert ADC value to voltage using a 3.3V/12-bit assumption.
-4. Apply a cubic approximation:
+1. Take 21 analog samples and use their median to reject ADC spikes.
+2. Convert the median ADC value to voltage using a 3.3V/12-bit assumption.
+3. Apply a cubic approximation:
 
 ```text
 tds = (133.42*v^3 - 255.86*v^2 + 857.39*v) * 0.5
 ```
 
-5. Clamp negative values to zero.
+4. Smooth successive measurements with an exponential moving average.
+5. Omit TDS from telemetry when the ADC input is pinned near ground or 3.3V. The app then displays no TDS reading rather than substituting a value.
 
 Limitations:
 
@@ -1146,7 +1146,7 @@ This section is critical for another AI so it does not incorrectly claim the pro
 
 ### Product limitations
 
-JalSetu is not yet a complete irrigation automation controller. The prototype can send manual or rain-aware pump targets after commissioning, but firmware outputs remain off until explicitly armed; it has no flow sensing or production-grade actuator safeguards.
+JalSetu is not yet a complete irrigation automation controller. The prototype can send manual or rain-aware pump targets after commissioning. Firmware outputs initialize OFF and only change on approved server targets; the arm switch is currently enabled. The system has no flow sensing or production-grade actuator safeguards.
 
 ---
 

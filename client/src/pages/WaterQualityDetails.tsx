@@ -55,7 +55,11 @@ const WaterQualityDetails = () => {
     const tdsStatus = tds >= 0   && tds <= 500  ? "Good" : "Warning";
     const rows = [];
     if (latest.phLevel  && latest.phLevel  !== "N/A") rows.push({ name: "pH Level", value: latest.phLevel,  status: phStatus,  icon: "ph" });
-    if (latest.tds      && latest.tds      !== "N/A") rows.push({ name: "TDS",      value: latest.tds,      status: tdsStatus, icon: "tds", unit: "ppm" });
+    if (latest.tds && latest.tds !== "N/A") {
+      rows.push({ name: "TDS", value: latest.tds, status: tdsStatus, icon: "tds", unit: "ppm" });
+    } else {
+      rows.push({ name: "TDS", value: "No reading", status: "Unavailable", icon: "tds" });
+    }
     if (latest.temperature && latest.temperature !== "N/A") rows.push({ name: "Temp", value: latest.temperature, status: "Good", icon: "temp" });
     return rows;
   })() : [];

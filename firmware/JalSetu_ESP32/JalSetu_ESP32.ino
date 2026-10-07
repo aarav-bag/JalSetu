@@ -33,6 +33,7 @@
 #include <WiFiManager.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <math.h>
 
 // ─── JalSetu server ───────────────────────────────────────────
 const char* SERVER_URL = "https://jalsetu-rbeg.onrender.com/api/esp32/sensor-data";
@@ -148,16 +149,50 @@ void connectWiFi() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  Read TDS  (ppm)
+//  Read and smooth measured TDS (ppm). This filters ADC noise only:
+//  it does not clamp readings into an expected range or invent values.
 // ══════════════════════════════════════════════════════════════
-float readTDS() {
-  long sum = 0;
-  for (int i = 0; i < 30; i++) { sum += analogRead(PIN_TDS); delay(10); }
-  float voltage = (sum / 30.0f) * (3.3f / 4095.0f);
-  float tds = (133.42f * voltage * voltage * voltage
+bool readTDS(float &tdsPpm) {
+  const int sampleCount = 21;
+  int samples[sampleCount];
+  for (int i = 0; i < sampleCount; i++) {
+    samples[i] = analogRead(PIN_TDS);
+    delay(5);
+  }
+
+  // Median filter rejects occasional ADC spikes without hiding real changes.
+  for (int i = 1; i < sampleCount; i++) {
+    const int value = samples[i];
+    int position = i - 1;
+    while (position >= 0 && samples[position] > value) {
+      samples[position + 1] = samples[position];
+      position--;
+    }
+    samples[position + 1] = value;
+  }
+
+  const int rawMedian = samples[sampleCount / 2];
+  // ADC rail values usually mean a disconnected/shorted analog output.
+  if (rawMedian <= 3 || rawMedian >= 4092) return false;
+
+  const float voltage = rawMedian * (3.3f / 4095.0f);
+  const float measuredTds = (133.42f * voltage * voltage * voltage
              - 255.86f * voltage * voltage
              + 857.39f * voltage) * 0.5f;
-  return max(0.0f, tds);
+  if (!isfinite(measuredTds) || measuredTds < 0.0f) return false;
+
+  // Exponential moving average smooths display noise while tracking changes.
+  static bool filterInitialized = false;
+  static float filteredTds = 0.0f;
+  if (!filterInitialized) {
+    filteredTds = measuredTds;
+    filterInitialized = true;
+  } else {
+    filteredTds += 0.35f * (measuredTds - filteredTds);
+  }
+
+  tdsPpm = filteredTds;
+  return true;
 }
 
 // Temporary demonstration value until a physical pH probe is installed and calibrated.
@@ -180,7 +215,7 @@ float readSoil(int pin, int dryVal, int wetVal) {
 // ══════════════════════════════════════════════════════════════
 //  POST sensor data to JalSetu server
 // ══════════════════════════════════════════════════════════════
-void sendToServer(int fieldId, float tds, float ph, float soil) {
+void sendToServer(int fieldId, bool tdsAvailable, float tds, float ph, float soil) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Not connected — skipping upload");
     return;
@@ -194,7 +229,7 @@ void sendToServer(int fieldId, float tds, float ph, float soil) {
   doc["secret"]       = SECRET;
   doc["farmId"]       = FARM_ID;
   doc["fieldId"]      = fieldId;
-  doc["tds"]          = (int)tds;
+  if (tdsAvailable) doc["tds"] = (int)roundf(tds);
   doc["ph"]           = ph;
   doc["soilMoisture"] = (int)soil;
 
@@ -390,17 +425,21 @@ void loop() {
   if (now - lastSend < INTERVAL_MS) return;
   lastSend = now;
 
-  float tds   = readTDS();
+  float tds = 0.0f;
+  const bool tdsAvailable = readTDS(tds);
   float ph    = readSimulatedPH();
   float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
   float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
 
-  Serial.printf("[Sensors] TDS: %.0f ppm | pH (SIMULATED): %.1f | F1: %.0f%% | F2: %.0f%%\n",
-                tds, ph, soil1, soil2);
+  Serial.print("[Sensors] TDS: ");
+  if (tdsAvailable) Serial.printf("%.0f ppm", tds);
+  else Serial.print("unavailable (check sensor analog output)");
+  Serial.printf(" | pH (SIMULATED): %.1f | F1: %.0f%% | F2: %.0f%%\n",
+                ph, soil1, soil2);
 
   blinkLed();
-  sendToServer(1, tds, ph, soil1);
-  sendToServer(2, tds, ph, soil2);
+  sendToServer(1, tdsAvailable, tds, ph, soil1);
+  sendToServer(2, tdsAvailable, tds, ph, soil2);
 
   ledOn();   // back to solid ON = idle
 }

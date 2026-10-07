@@ -5,6 +5,7 @@ export const IRRIGATION_POLICY = {
   soilStopAtOrAbove: 60,
   highRainChanceAt: 50,
   soilFreshForMs: 2 * 60 * 1000,
+  maxRunSeconds: 5,
 } as const;
 
 export interface PumpDecisionInput {
@@ -38,7 +39,7 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
     return { desiredOn: false, reason: "Pump is in its post-run safety cooldown" };
   }
 
-  const maxRunMs = Math.max(5, Math.min(600, input.maxRunSeconds)) * 1000;
+  const maxRunMs = Math.max(5, Math.min(IRRIGATION_POLICY.maxRunSeconds, input.maxRunSeconds)) * 1000;
   if (
     input.actualOn
     && input.actualUpdatedAt

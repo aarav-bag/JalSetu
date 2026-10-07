@@ -32,6 +32,8 @@ const safetyChecks: { key: keyof Omit<SafetyValues, "maxRunSeconds">; label: str
   { key: "lowWaterVerified", label: "Independent physical low-water cutoff tested" },
 ];
 
+const MAX_PUMP_RUN_SECONDS = 5;
+
 function PumpSafetyCard({
   pump,
   busy,
@@ -46,7 +48,6 @@ function PumpSafetyCard({
     relayVerified: pump.relayVerified,
     lowWaterVerified: pump.lowWaterVerified,
   });
-  const [maxRunSeconds, setMaxRunSeconds] = useState(pump.maxRunSeconds || 60);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
@@ -56,10 +57,7 @@ function PumpSafetyCard({
       relayVerified: pump.relayVerified,
       lowWaterVerified: pump.lowWaterVerified,
     });
-    setMaxRunSeconds(pump.maxRunSeconds || 60);
-  }, [dirty, pump.powerVerified, pump.relayVerified, pump.lowWaterVerified, pump.maxRunSeconds]);
-
-  const validRunDuration = Number.isInteger(maxRunSeconds) && maxRunSeconds >= 5 && maxRunSeconds <= 600;
+  }, [dirty, pump.powerVerified, pump.relayVerified, pump.lowWaterVerified]);
   const statusLabel = pump.safetyReady
     ? "Safety ready"
     : Object.values(checks).every(Boolean) && !pump.firmwareEnabled
@@ -68,7 +66,7 @@ function PumpSafetyCard({
 
   const save = async () => {
     try {
-      await onSave(pump.fieldId, { ...checks, maxRunSeconds });
+      await onSave(pump.fieldId, { ...checks, maxRunSeconds: MAX_PUMP_RUN_SECONDS });
       setDirty(false);
     } catch {
       // Mutation feedback is shown by the parent.
@@ -106,29 +104,14 @@ function PumpSafetyCard({
         ))}
       </fieldset>
 
-      <label className="mt-4 flex items-center justify-between gap-3 text-[11px] card-body">
+      <div className="mt-4 flex items-center justify-between gap-3 text-[11px] card-body">
         <span>Maximum run time per start</span>
-        <span className="flex items-center gap-1">
-          <input
-            aria-label={`${pump.fieldName} maximum run time in seconds`}
-            type="number"
-            min={5}
-            max={600}
-            value={maxRunSeconds}
-            disabled={busy}
-            onChange={(event) => {
-              setDirty(true);
-              setMaxRunSeconds(Number(event.target.value));
-            }}
-            className="w-20 rounded-lg border border-slate-400/30 bg-transparent px-2 py-1 text-right card-heading"
-          />
-          sec
-        </span>
-      </label>
+        <span className="font-semibold card-heading">{MAX_PUMP_RUN_SECONDS} sec</span>
+      </div>
 
       <button
         type="button"
-        disabled={busy || !dirty || !validRunDuration}
+        disabled={busy || !dirty}
         onClick={() => void save()}
         className="mt-4 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-teal-700/20 bg-teal-700/[0.06] px-3 text-xs font-bold text-teal-900 transition-colors hover:bg-teal-700/10 disabled:cursor-not-allowed disabled:opacity-45 dark:text-teal-100"
       >
@@ -180,7 +163,7 @@ export default function PumpSafetySettings() {
           Pump safety
         </h2>
         <p className="mt-1 text-xs card-muted">
-          Review safety confirmations and maximum run time for each pump.
+          Review safety confirmations. Each pump stops after a maximum of 5 seconds per start.
         </p>
       </div>
 

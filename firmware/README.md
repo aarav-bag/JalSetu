@@ -80,7 +80,7 @@ Control wiring for the current firmware:
 | Regulated 5V | Relay module `VCC` |
 | ESP32 GND | Relay module `GND` when required by that module's control-input design |
 
-The firmware now follows the attached pin map: GPIO 26 for Field 1 and GPIO 27 for Field 2, with active-low relay inputs. Confirm the relay `IN` wires are on those GPIOs before flashing; the previous firmware pin map was different. `PUMP_OUTPUTS_ARMED` is enabled. Outputs initialize to OFF; the ESP32 only applies pump targets received from the authenticated server. Keep the app's per-field commissioning checks complete and use the saved maximum run time. If relay modules, pin mapping, trigger level, pump supply, or low-water protection change, turn the outputs off and re-verify before use.
+The firmware now follows the attached pin map: GPIO 26 for Field 1 and GPIO 27 for Field 2, with active-low relay inputs. Confirm the relay `IN` wires are on those GPIOs before flashing; the previous firmware pin map was different. `PUMP_OUTPUTS_ARMED` is enabled. Outputs initialize to OFF; the ESP32 only applies pump targets received from the authenticated server. Keep the app's per-field commissioning checks complete; both the app/server and firmware enforce a 5-second maximum per start. If relay modules, pin mapping, trigger level, pump supply, or low-water protection change, turn the outputs off and re-verify before use.
 
 Automatic mode uses each field's latest soil reading and today's Open-Meteo rain probability:
 
@@ -88,7 +88,7 @@ Automatic mode uses each field's latest soil reading and today's Open-Meteo rain
 - Skip/stop if rain chance is 50% or higher.
 - Stop at 60% soil moisture.
 - Missing/stale soil data or an unavailable rain forecast fails closed and keeps the pump off.
-- Every run uses its configured maximum duration; the ESP32 also stops on server loss and at the firmware hard cap.
+- Every pump run is capped at 5 seconds by the app/server and ESP32; the ESP32 also stops on server loss.
 - Manual app control is per field and does not bypass the run-time or physical low-water safeguards.
 
 Choose the farm location in the app so its coordinates can be saved for the server's weather check. The backend stores pump mode per field, and the ESP32 polls target states every five seconds and reports actual relay state.

@@ -4,7 +4,7 @@ import { pool } from "./db";
 import { storage } from "./storage";
 import { isAuthenticated } from "./auth";
 import { fetchRealWeather } from "./weather";
-import { decidePumpTarget } from "./irrigationPolicy";
+import { decidePumpTarget, IRRIGATION_POLICY } from "./irrigationPolicy";
 
 type WeatherCacheEntry = { fetchedAt: number; rainChance: number };
 const weatherCache = new Map<string, WeatherCacheEntry>();
@@ -141,6 +141,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
 =======
 >>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
       pumps: rows.map((row) => {
+        const maxRunSeconds = IRRIGATION_POLICY.maxRunSeconds;
         const safetyReady = Boolean(
           row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled,
         );
@@ -153,7 +154,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
           soilMoisture,
           soilObservedAt: row.soilObservedAt ? new Date(row.soilObservedAt) : null,
           rainChance,
-          maxRunSeconds: Number(row.maxRunSeconds),
+          maxRunSeconds,
           actualUpdatedAt: row.actualUpdatedAt ? new Date(row.actualUpdatedAt) : null,
           manualCommandAt: row.manualCommandAt ? new Date(row.manualCommandAt) : null,
           cooldownUntil: row.cooldownUntil ? new Date(row.cooldownUntil) : null,
@@ -161,6 +162,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
 
         return {
           ...row,
+          maxRunSeconds,
           soilMoisture,
           rainChance,
           desiredOn: decision.desiredOn,
@@ -185,7 +187,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
       powerVerified: z.boolean(),
       relayVerified: z.boolean(),
       lowWaterVerified: z.boolean(),
-      maxRunSeconds: z.number().int().min(5).max(600),
+      maxRunSeconds: z.number().int().min(5).max(IRRIGATION_POLICY.maxRunSeconds),
     });
     const values = schema.parse(req.body);
     const userId = Number((req.user as any).id);
@@ -315,6 +317,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     );
 
     const targets = rows.map((row, index: number) => {
+      const maxRunSeconds = IRRIGATION_POLICY.maxRunSeconds;
       const safetyReady = Boolean(
         row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled,
       );
@@ -326,7 +329,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
         soilMoisture: row.soilMoisture === null ? null : Number(row.soilMoisture),
         soilObservedAt: row.soilObservedAt ? new Date(row.soilObservedAt) : null,
         rainChance,
-        maxRunSeconds: Number(row.maxRunSeconds),
+        maxRunSeconds,
         actualUpdatedAt: row.actualUpdatedAt ? new Date(row.actualUpdatedAt) : null,
         manualCommandAt: row.manualCommandAt ? new Date(row.manualCommandAt) : null,
         cooldownUntil: row.cooldownUntil ? new Date(row.cooldownUntil) : null,
@@ -335,7 +338,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
         fieldIndex: index + 1,
         desiredOn: decision.desiredOn,
         reason: decision.reason,
-        maxRunSeconds: Number(row.maxRunSeconds),
+        maxRunSeconds,
         mode: row.mode as string,
         rainChance,
       };

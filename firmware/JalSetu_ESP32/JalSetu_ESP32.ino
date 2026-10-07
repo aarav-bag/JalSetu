@@ -73,7 +73,7 @@ const unsigned long INTERVAL_MS      = 30000;  // 30 s between uploads
 const unsigned long RESET_HOLD_MS    = 3000;   // hold 3 s to reset WiFi
 const unsigned long PUMP_POLL_MS     = 5000;   // poll app commands every 5 s
 const unsigned long PUMP_OFFLINE_MS  = 15000;  // force off without server contact
-const unsigned long PUMP_MAX_RUN_MS  = 600000; // firmware hard cap: 10 minutes
+const unsigned long PUMP_MAX_RUN_MS  = 5000;   // firmware hard cap: 5 seconds
 
 unsigned long lastSend = 0;
 unsigned long lastPumpPoll = 0;
@@ -81,7 +81,7 @@ unsigned long lastPumpServerContact = 0;
 bool pumpIsOn[2] = { false, false };
 bool pumpRuntimeExpired[2] = { false, false };
 unsigned long pumpStartedAt[2] = { 0, 0 };
-unsigned long pumpMaxRunMs[2] = { 60000, 60000 };
+unsigned long pumpMaxRunMs[2] = { 5000, 5000 };
 
 // ══════════════════════════════════════════════════════════════
 //  LED helpers

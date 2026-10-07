@@ -695,10 +695,12 @@ firmware/README.md
 | 34 | TDS analog output |
 | 32 | Soil moisture, Field 1 |
 | 36 / VP | Soil moisture, Field 2 |
-| 25 | Field 1 relay input (firmware output disabled by default) |
-| 26 | Field 2 relay input (firmware output disabled by default) |
+| 25 | Field 1 relay input (active-low; outputs armed) |
+| 26 | Field 2 relay input (active-low; outputs armed) |
 | 2 | Onboard status LED |
 | 0 | BOOT button, Wi-Fi reset |
+
+Water-level sensing is currently removed from the firmware and GPIO 35 is unused.
 
 ### Wi-Fi behavior
 
@@ -736,13 +738,7 @@ Limitations:
 
 ### pH module
 
-The current firmware does **not** read a physical pH sensor.
-
-`readPH()` currently returns a random value selected from a neutral range around 7.0–7.5. This exists for demonstration and API/dashboard testing.
-
-This is one of the most important facts for another AI:
-
-> Any current pH number shown by the ESP32 path is simulated unless a physical pH probe and real calibration formula have been added separately.
+The current firmware does **not** read or send pH. No physical pH sensor is installed.
 
 To make pH real, the firmware needs:
 
@@ -790,11 +786,10 @@ Every 30 seconds:
 1. Read TDS.
 2. Read Field 1 moisture.
 3. Read Field 2 moisture.
-4. Read raw water-level ADC.
-5. POST one payload for Field 1.
-6. POST one payload for Field 2.
+4. POST one payload for Field 1.
+5. POST one payload for Field 2.
 
-Both field uploads currently carry the same TDS and raw water-level readings, while soil moisture differs by field. No pH value is sent.
+Both field uploads currently carry the same TDS reading, while soil moisture differs by field. No pH or water-level value is sent.
 
 The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs are compile-time enabled after the user confirmed the hardware commissioning checks; outputs initialize OFF and only authenticated server targets can start a pump. Keep the per-field app commissioning checks and run-time limits in place. The current controller does not:
 
@@ -1308,7 +1303,7 @@ When testing sensor features:
 ## 19. Fast context summary for an AI prompt
 
 ```text
-JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors, TDS, and raw water level, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. pH is not sent because no physical probe is connected. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; pause for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls retain per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` is enabled, with outputs initialized OFF. The user reports the hardware commissioning and calibration checks are complete. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
+JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors and TDS, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. pH and water-level sensing are currently excluded. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; pause for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls retain per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` is enabled, with outputs initialized OFF. The user reports the hardware commissioning and calibration checks are complete. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
 ```
 
 ---

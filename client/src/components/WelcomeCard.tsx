@@ -1,4 +1,4 @@
-import { Leaf, Sun, CloudRain, Cloud, TrendingUp, Droplets, Moon, Sunset } from "lucide-react";
+import { Leaf, Sun, CloudRain, Cloud, TrendingUp, Moon, Sunset } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface WelcomeCardProps {
@@ -41,7 +41,6 @@ const WelcomeCard = ({ farmerName, farmStatus }: WelcomeCardProps) => {
 
   const quickStats = [
     { label: 'Farm Health', value: '94%', icon: TrendingUp, color: 'text-emerald-600 dark:text-emerald-300' },
-    { label: 'Water Level', value: '78%', icon: Droplets, color: 'text-blue-600 dark:text-cyan-300' },
     { label: 'Crop Stage',  value: 'Grow', icon: Leaf,       color: 'text-green-600 dark:text-green-300' },
   ];
 
@@ -76,7 +75,7 @@ const WelcomeCard = ({ farmerName, farmStatus }: WelcomeCardProps) => {
           </div>
 
           {/* Quick stats */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {quickStats.map((stat) => (
               <div key={stat.label} className="glass-tile rounded-2xl p-3 text-center">
                 <stat.icon className={`h-4 w-4 ${stat.color} mx-auto mb-1`} />

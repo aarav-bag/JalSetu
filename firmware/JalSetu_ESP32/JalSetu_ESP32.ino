@@ -23,10 +23,9 @@
  * Active monitoring hardware:
  *   • TDS analog sensor
  *   • Soil moisture probes for Field 1 and Field 2
- *   • REL_35-style analog water-level sensor (raw ADC only; calibrate separately)
  *
- * No camera or simulated pH is included. Pump relay commands are supported
- * but the output arm switch is false by default.
+ * No camera, pH sensor, or water-level sensor is included.
+ * Pump relay commands are supported and outputs initialize OFF.
  */
 
 #include <WiFi.h>
@@ -45,7 +44,6 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 #define PIN_TDS          34   // TDS sensor analog out
 #define PIN_SOIL_FIELD1  32   // Soil moisture — Field 1
 #define PIN_SOIL_FIELD2  36   // Soil moisture — Field 2 (VP pin)
-#define PIN_WATER_LEVEL  35   // Water level sensor analog out (ADC1)
 
 // ─── Control pins ─────────────────────────────────────────────
 #define PIN_LED          2    // Onboard LED (GPIO 2)
@@ -172,23 +170,10 @@ float readSoil(int pin, int dryVal, int wetVal) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  Read water-level sensor raw ADC value (0–4095)
-//  Convert to percentage only after dry/full calibration.
-// ══════════════════════════════════════════════════════════════
-int readWaterLevelRaw() {
-  long sum = 0;
-  const int samples = 20;
-  for (int i = 0; i < samples; i++) {
-    sum += analogRead(PIN_WATER_LEVEL);
-    delay(5);
-  }
-  return (int)(sum / samples);
-}
-
 // ══════════════════════════════════════════════════════════════
 //  POST sensor data to JalSetu server
 // ══════════════════════════════════════════════════════════════
-void sendToServer(int fieldId, float tds, float soil, int waterLevelRaw) {
+void sendToServer(int fieldId, float tds, float soil) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Not connected — skipping upload");
     return;
@@ -204,7 +189,6 @@ void sendToServer(int fieldId, float tds, float soil, int waterLevelRaw) {
   doc["fieldId"]      = fieldId;
   doc["tds"]          = (int)tds;
   doc["soilMoisture"] = (int)soil;
-  doc["waterLevelRaw"] = waterLevelRaw;
 
   String body;
   serializeJson(doc, body);
@@ -400,14 +384,13 @@ void loop() {
   float tds   = readTDS();
   float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
   float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
-  int waterLevelRaw = readWaterLevelRaw();
 
-  Serial.printf("[Sensors] TDS: %.0f ppm | F1: %.0f%% | F2: %.0f%% | Water level ADC: %d\n",
-                tds, soil1, soil2, waterLevelRaw);
+  Serial.printf("[Sensors] TDS: %.0f ppm | F1: %.0f%% | F2: %.0f%%\n",
+                tds, soil1, soil2);
 
   blinkLed();
-  sendToServer(1, tds, soil1, waterLevelRaw);
-  sendToServer(2, tds, soil2, waterLevelRaw);
+  sendToServer(1, tds, soil1);
+  sendToServer(2, tds, soil2);
 
   ledOn();   // back to solid ON = idle
 }

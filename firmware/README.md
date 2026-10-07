@@ -44,11 +44,7 @@ The LED blinks fast → credentials wiped → hotspot reopens → follow steps 2
 | GPIO 2  | Onboard LED (status indicator) |
 | GPIO 0  | BOOT button — hold 3 s to reset WiFi |
 
-<<<<<<< HEAD
-This firmware is for the sensor/pump-control ESP32, not the separate camera board. It reads TDS and both soil probes. pH is temporarily simulated from 7.0 to 7.4 in 0.1 steps; no physical pH probe is connected. Water-level sensing remains removed. It supports app-to-ESP32 pump commands; relay outputs initialize OFF.
-=======
-This firmware is for the sensor/pump-control ESP32, not the separate camera board. It reads TDS, both soil probes, and raw water-level ADC. It does not send pH (no physical pH probe is connected). It includes app-to-ESP32 pump commands, but relay outputs are disabled by default.
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
+This firmware is for the sensor/pump-control ESP32, not the separate camera board. It reads TDS and both soil probes. Water-level and pH sensors are not included. It supports app-to-ESP32 pump commands; relay outputs initialize OFF.
 
 ## Sensor wiring
 
@@ -60,42 +56,7 @@ This firmware is for the sensor/pump-control ESP32, not the separate camera boar
 | Each sensor `GND` | ESP32 GND (shared ground) |
 | Each sensor `VCC` | Power the module at its rated voltage; ensure every analog output stays at or below 3.3 V |
 
-GPIO 34 and GPIO 36 are input-only ADC pins, which is suitable for these analog sensor outputs. GPIO 35 is unused now that water-level sensing has been removed. The simulated pH value uses no sensor pin.
-
-## Two-pump relay setup
-
-The Irrigation page in the app has a two-pump wiring tutorial and separate Field 1 / Field 2 manual and automatic controls. The relay-contact wiring for each pump is:
-
-```text
-regulated 5V pump supply + -> inline fuse -> relay COM
-relay NO -> pump +
-pump - -> regulated 5V pump supply -
-relay NC -> unused
-```
-
-The pictured pumps are labeled **5V DC**. Do not connect a 9V battery directly to them or to the relay board's `VCC`. No series resistor is needed. Size the regulated supply and branch fuses for the actual pump startup current; it is not available from the pump label.
-
-Control wiring for the current firmware:
-
-| ESP32 / relay pin | Connection |
-|---|---|
-| GPIO 25 | Field 1 relay `IN` |
-| GPIO 26 | Field 2 relay `IN` |
-| Regulated 5V | Relay module `VCC` |
-| ESP32 GND | Relay module `GND` when required by that module's control-input design |
-
-The current firmware is configured for GPIO 25 and 26 with active-low relay inputs (`PUMP_RELAY_ACTIVE_LOW true`), based on the user's hardware commissioning confirmation. `PUMP_OUTPUTS_ARMED` is enabled. Outputs initialize to OFF; the ESP32 only applies a pump target received from the authenticated server. Keep the app's per-field commissioning checks complete and use the saved maximum run time. If relay modules, pin mapping, trigger level, pump supply, or low-water protection change, turn the outputs off and re-verify before use.
-
-Automatic mode uses each field's latest soil reading and today's Open-Meteo rain probability:
-
-- Start below 35% soil moisture only when rain chance is below 50%.
-- Skip/stop if rain chance is 50% or higher.
-- Stop at 60% soil moisture.
-- Missing/stale soil data or an unavailable rain forecast fails closed and keeps the pump off.
-- Every run uses its configured maximum duration; the ESP32 also stops on server loss and at the firmware hard cap.
-- Manual app control is per field and does not bypass the run-time or physical low-water safeguards.
-
-Choose the farm location in the app so its coordinates can be saved for the server's weather check. The backend stores pump mode per field, and the ESP32 polls target states every five seconds and reports actual relay state.
+GPIO 34 and GPIO 36 are input-only ADC pins, which is suitable for these analog sensor outputs. GPIO 35 is unused now that water-level sensing has been removed. No pH sensor is connected.
 
 ## Two-pump relay setup
 

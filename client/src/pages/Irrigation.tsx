@@ -11,6 +11,7 @@ import {
   Info,
   MapPin,
   RefreshCw,
+  Settings as SettingsIcon,
   ShieldCheck,
   Sprout,
   Sun,
@@ -22,6 +23,7 @@ import PageShell from "@/components/PageShell";
 import { useUserLocation } from "@/context/LocationContext";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation as useRouterLocation } from "wouter";
 
 interface SoilField {
   id: number;
@@ -230,6 +232,12 @@ function PumpControlCard({ pump, busy, onMode, onManual, onCommission }: PumpCon
   const statusText = pump.actualUpdatedAt
     ? `${pump.actualOn ? "ON" : "OFF"} · device reported`
     : "Waiting for ESP32 status";
+  const checksConfirmed = pump.powerVerified && pump.relayVerified && pump.lowWaterVerified;
+  const safetyStatus = pump.safetyReady
+    ? statusText
+    : checksConfirmed
+      ? "Waiting for ESP32"
+      : "Safety locked";
   const controlId = `pump-${pump.fieldId}`;
 
   return (
@@ -249,7 +257,7 @@ function PumpControlCard({ pump, busy, onMode, onManual, onCommission }: PumpCon
             ? "border-teal-500/25 bg-teal-500/10 text-teal-700 dark:text-teal-200"
             : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-200"
         }`}>
-          {pump.safetyReady ? statusText : "Safety locked"}
+          {safetyStatus}
         </span>
       </div>
 
@@ -318,7 +326,7 @@ function PumpControlCard({ pump, busy, onMode, onManual, onCommission }: PumpCon
         </button>
       </div>
 
-      {!pump.safetyReady && (
+      {!checksConfirmed && (
         <div className="mt-4 space-y-2 border-t divider pt-3">
           <p className="text-xs font-bold card-heading">Safety confirmation required for {pump.fieldName}</p>
           {([
@@ -375,6 +383,7 @@ function PumpControlCard({ pump, busy, onMode, onManual, onCommission }: PumpCon
 }
 
 const Irrigation = () => {
+  const [, navigate] = useRouterLocation();
   const { location, isSet } = useUserLocation();
   const configuredLocation = isSet ? location : null;
   const [showLocationPicker, setShowLocationPicker] = useState(!isSet);
@@ -502,6 +511,11 @@ const Irrigation = () => {
   };
 
   const fields = farmData?.soilMoisture?.fields ?? [];
+  const pumps = pumpQuery.data?.pumps ?? [];
+  const allPumpsSafetyReady = pumps.length > 0 && pumps.every((pump) => pump.safetyReady);
+  const allPumpChecksConfirmed = pumps.length > 0 && pumps.every((pump) =>
+    pump.powerVerified && pump.relayVerified && pump.lowWaterVerified
+  );
   const reportingCount = fields.filter((field) =>
     field.hasReading === true && typeof field.value === "number" && Number.isFinite(field.value)
   ).length;
@@ -781,27 +795,81 @@ const Irrigation = () => {
               </div>
             )}
 
-            <div className="mt-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-4 sm:p-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
-                  <ShieldCheck className="h-5 w-5 text-amber-700 dark:text-amber-200" aria-hidden="true" />
+            {allPumpChecksConfirmed ? (
+              <div
+                className={`mt-3 flex items-center justify-between gap-3 rounded-2xl border p-3 sm:p-4 ${
+                  allPumpsSafetyReady
+                    ? "border-teal-600/20 bg-teal-600/[0.06]"
+                    : "border-amber-500/25 bg-amber-500/[0.07]"
+                }`}
+                role="status"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                    allPumpsSafetyReady
+                      ? "border-teal-600/20 bg-teal-600/10"
+                      : "border-amber-500/20 bg-amber-500/10"
+                  }`}>
+                    <ShieldCheck
+                      className={`h-5 w-5 ${
+                        allPumpsSafetyReady
+                          ? "text-teal-700 dark:text-teal-200"
+                          : "text-amber-700 dark:text-amber-200"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-bold ${
+                      allPumpsSafetyReady
+                        ? "text-teal-950 dark:text-teal-100"
+                        : "text-amber-950 dark:text-amber-100"
+                    }`}>
+                      {allPumpsSafetyReady ? "Safety confirmed" : "Safety checks saved"}
+                    </p>
+                    <p className={`text-xs ${
+                      allPumpsSafetyReady
+                        ? "text-teal-900/75 dark:text-teal-100/70"
+                        : "text-amber-900/80 dark:text-amber-100/70"
+                    }`}>
+                      {allPumpsSafetyReady
+                        ? "Edit checks and run time in Settings."
+                        : "Waiting for ESP32 outputs. Edit settings anytime."}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-amber-950 dark:text-amber-100">Safety commissioning required</h3>
-                  <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/70">
-                    The ESP32 must report its relay outputs enabled. Missing or stale sensor/weather data blocks automatic starts; each run is limited by its saved maximum duration.
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/settings")}
+                  className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-teal-700/20 bg-white/40 px-3 text-xs font-bold text-teal-900 transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:bg-black/10 dark:text-teal-100 dark:hover:bg-black/20"
+                >
+                  <SettingsIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                  Settings
+                </button>
               </div>
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-                {safetyRequirements.map((requirement) => (
-                  <li key={requirement} className="flex items-start gap-2 text-xs leading-relaxed text-amber-950/85 dark:text-amber-100/80">
-                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600 dark:bg-amber-300" />
-                    {requirement}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            ) : (
+              <div className="mt-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
+                    <ShieldCheck className="h-5 w-5 text-amber-700 dark:text-amber-200" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-amber-950 dark:text-amber-100">Safety commissioning required</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/70">
+                      The ESP32 must report its relay outputs enabled. Missing or stale sensor/weather data blocks automatic starts; each run is limited by its saved maximum duration.
+                    </p>
+                  </div>
+                </div>
+                <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {safetyRequirements.map((requirement) => (
+                    <li key={requirement} className="flex items-start gap-2 text-xs leading-relaxed text-amber-950/85 dark:text-amber-100/80">
+                      <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600 dark:bg-amber-300" />
+                      {requirement}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <details className="glass-tile mt-3 rounded-2xl p-4 sm:p-5">
               <summary className="cursor-pointer text-sm font-bold card-heading">

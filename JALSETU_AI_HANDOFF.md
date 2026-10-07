@@ -796,7 +796,11 @@ Every 30 seconds:
 
 Both field uploads currently carry the same TDS and simulated pH readings, while soil moisture differs by field. No water-level value is sent.
 
+<<<<<<< HEAD
 The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs are compile-time enabled after the user confirmed the hardware commissioning checks; outputs initialize OFF and only authenticated server targets can start a pump. Keep the per-field app commissioning checks and run-time limits in place. The current controller does not:
+=======
+The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs remain compile-time disabled by default; do not arm them until the installed relay inputs/polarity, pump supply, independent low-water cutoff, and run-time limit have been verified. The current controller does not:
+>>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
 
 - Control a valve
 - Read calibrated tank level or flow

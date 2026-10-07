@@ -70,6 +70,10 @@ interface PumpControl {
   firmwareEnabled: boolean;
   actualOn: boolean;
   actualUpdatedAt: string | null;
+  soilMoisture: number | null;
+  rainChance: number | null;
+  desiredOn: boolean;
+  decisionReason: string;
   safetyReady: boolean;
 }
 
@@ -253,6 +257,26 @@ function PumpControlCard({ pump, busy, onMode, onManual, onCommission }: PumpCon
         Mode: <span className="font-semibold capitalize">{pump.mode}</span>
         {" · "}Maximum run: <span className="font-semibold">{pump.maxRunSeconds}s</span>
       </p>
+      <div className="mt-3 rounded-xl border border-cyan-700/15 bg-cyan-700/[0.04] p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide card-muted">Controller decision</p>
+            <p className="mt-1 text-xs leading-relaxed card-body">{pump.decisionReason}</p>
+          </div>
+          <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${
+            pump.desiredOn
+              ? "bg-teal-600/10 text-teal-800 dark:text-teal-200"
+              : "bg-slate-500/10 text-slate-700 dark:text-slate-200"
+          }`}>
+            Target {pump.desiredOn ? "ON" : "OFF"}
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold card-muted">
+          <span>Soil: {pump.soilMoisture === null ? "unavailable" : `${pump.soilMoisture}%`}</span>
+          <span>Today’s rain chance: {pump.rainChance === null ? "unavailable" : `${pump.rainChance}%`}</span>
+          <span>Device: {pump.actualOn ? "ON" : "OFF"}</span>
+        </div>
+      </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           type="button"

@@ -1,0 +1,34 @@
+I added the two-pump wiring tutorial to the Irrigation page. It keeps your COM → NO → pump switching layout, but shows a regulated 5V supply because the pumps are labeled 5V. The app build passes; I couldn’t visually verify the signed-in Irrigation page in the preview.
+
+The control rule can be:
+
+Auto start: soil reading is fresh and <35%,
+            rain forecast is fresh and <50%,
+            and all hardware safety checks pass.
+Auto stop:  soil reaches 60%, rain chance reaches 50%,
+            the maximum run time expires, or any safety check fails.
+Manual:     separate start/stop per field, but never bypass low-water
+            protection or the maximum run-time limit.
+I have not enabled live app controls or changed the ESP32 firmware. Your wiring description covers the relay contacts, not the ESP32 relay-input pins or trigger polarity; and the 9V batteries connected to 5V pumps are not a verified safe supply. The existing ESP32 only uploads sensor data, so it cannot receive app commands yet. Until the 5V pump supply, relay inputs, and low-water/run-time safeguards are verified, I won’t provide firmware that can energize the pumps.
+
+
+Worked for 1 minute
+
+Checkpoint made
+20 minutes ago
+bro just give me the code and prepare the page as i told u or esp32 communication the push it to git
+
+Free
+18 minutes ago
+
+5 actions
+Understood. I’ll implement the soil-and-rain automation rule, per-field manual controls, ESP32 polling/acknowledgment, and the wiring tutorial, then push the finished changes to the existing Git remote. I’ll keep the relay logic fail-safe and won’t assume the unknown input polarity or treat the 9V-to-5V pump wiring as safe. First I’m checking the current Git state and the app’s existing device/auth patterns so the push contains only the intended work.
+
+
+87 actions
+The production build passes. The standalone TypeScript check reports 10 errors in existing auth, alert, and Vite files; none are in the irrigation changes. I’m checking the workflow instructions, then I’ll restart the server to apply the new database table and exercise the irrigation policy.
+
+
+11 actions
+
+Worked for 13 minutes

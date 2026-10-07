@@ -69,6 +69,9 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     await ensurePumpRows(farm.id);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
     let rainChance: number | null = null;
     try {
       rainChance = await getCurrentRainChance(farm.latitude ?? null, farm.longitude ?? null);
@@ -76,8 +79,11 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
       rainChance = null;
     }
 
+<<<<<<< HEAD
 =======
 >>>>>>> d6ac647 (Update irrigation page and handoff documentation)
+=======
+>>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
     const { rows } = await pool.query(
       `SELECT f.id AS "fieldId", f.name AS "fieldName",
               c.mode, c.manual_on AS "manualOn",
@@ -89,10 +95,14 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
               c.actual_on AS "actualOn",
               c.actual_updated_at AS "actualUpdatedAt",
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
               c.updated_at AS "manualCommandAt",
               c.cooldown_until AS "cooldownUntil",
               sm.moisture_level AS "soilMoisture",
               sm.created_at AS "soilObservedAt"
+<<<<<<< HEAD
        FROM fields f
        JOIN irrigation_pump_controls c ON c.field_id = f.id
        LEFT JOIN LATERAL (
@@ -107,6 +117,17 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
        FROM fields f
        JOIN irrigation_pump_controls c ON c.field_id = f.id
 >>>>>>> d6ac647 (Update irrigation page and handoff documentation)
+=======
+       FROM fields f
+       JOIN irrigation_pump_controls c ON c.field_id = f.id
+       LEFT JOIN LATERAL (
+         SELECT moisture_level, created_at
+         FROM soil_moistures
+         WHERE field_id = f.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) sm ON TRUE
+>>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
        WHERE f.farm_id = $1
        ORDER BY f.id`,
       [farm.id],
@@ -116,6 +137,9 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
       farmId: farm.id,
       locationConfigured: farm.latitude !== null && farm.longitude !== null,
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
       pumps: rows.map((row) => {
         const safetyReady = Boolean(
           row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled,
@@ -144,12 +168,15 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
           safetyReady,
         };
       }),
+<<<<<<< HEAD
 =======
       pumps: rows.map((row) => ({
         ...row,
         safetyReady: Boolean(row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled),
       })),
 >>>>>>> d6ac647 (Update irrigation page and handoff documentation)
+=======
+>>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
     });
   }));
 

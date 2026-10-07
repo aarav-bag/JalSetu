@@ -43,9 +43,9 @@ const char* PUMP_TARGETS_URL = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump-status";
 
 // ─── Sensor pins ──────────────────────────────────────────────
-#define PIN_TDS          34   // TDS sensor analog out
-#define PIN_SOIL_FIELD1  32   // Soil moisture — Field 1
-#define PIN_SOIL_FIELD2  36   // Soil moisture — Field 2 (VP pin)
+#define PIN_TDS   34   // TDS sensor analog out
+#define SOIL1_PIN 32   // Soil moisture — Field 1
+#define SOIL2_PIN 33   // Soil moisture — Field 2
 
 // Keep enabled for the school demonstration. Set false to read the TDS ADC;
 // pH is omitted until a physical probe and calibration are added.
@@ -54,8 +54,8 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 // ─── Control pins ─────────────────────────────────────────────
 #define PIN_LED          2    // Onboard LED (GPIO 2)
 #define PIN_RESET_WIFI   0    // BOOT button — hold 3 s to reset WiFi
-#define PIN_PUMP_FIELD1  25   // Relay 1 IN — verify board pin labels
-#define PIN_PUMP_FIELD2  26   // Relay 2 IN — verify board pin labels
+#define RELAY1_PIN 26   // Relay 1 IN
+#define RELAY2_PIN 27   // Relay 2 IN
 
 // Hardware commissioning has been confirmed by the user.
 // Keep the relay outputs inactive at boot; only server-approved targets can turn them on.
@@ -63,10 +63,10 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 #define PUMP_RELAY_ACTIVE_LOW true
 
 // ─── Soil calibration ─────────────────────────────────────────
-#define SOIL1_DRY        4095
-#define SOIL1_WET        500
-#define SOIL2_DRY        4095
-#define SOIL2_WET        1100
+#define DRY1_VALUE 4095
+#define WET1_VALUE 1800
+#define DRY2_VALUE 3900
+#define WET2_VALUE 1500
 
 // ─── Timing ───────────────────────────────────────────────────
 const unsigned long INTERVAL_MS      = 30000;  // 30 s between uploads
@@ -233,10 +233,11 @@ float readDemoPH() {
 // ══════════════════════════════════════════════════════════════
 //  Read Soil Moisture  (0–100 %)
 // ══════════════════════════════════════════════════════════════
-float readSoil(int pin, int dryVal, int wetVal) {
+float readSoil(int pin, int dryVal, int wetVal, int &rawAverage) {
   long sum = 0;
   for (int i = 0; i < 10; i++) { sum += analogRead(pin); delay(10); }
-  float pct = (float)(dryVal - sum / 10.0f) / (dryVal - wetVal) * 100.0f;
+  rawAverage = sum / 10;
+  float pct = (float)(dryVal - rawAverage) / (dryVal - wetVal) * 100.0f;
   return constrain(pct, 0.0f, 100.0f);
 }
 
@@ -271,7 +272,7 @@ void sendToServer(int fieldId, bool tdsAvailable, float tds, bool phAvailable, f
 }
 
 int pumpRelayPin(int pumpIndex) {
-  return pumpIndex == 0 ? PIN_PUMP_FIELD1 : PIN_PUMP_FIELD2;
+  return pumpIndex == 0 ? RELAY1_PIN : RELAY2_PIN;
 }
 
 void setPumpOutput(int pumpIndex, bool on) {
@@ -293,18 +294,18 @@ void setPumpOutput(int pumpIndex, bool on) {
 
 void initializePumpOutputs() {
   if (!PUMP_OUTPUTS_ARMED) {
-    pinMode(PIN_PUMP_FIELD1, INPUT);
-    pinMode(PIN_PUMP_FIELD2, INPUT);
+    pinMode(RELAY1_PIN, INPUT);
+    pinMode(RELAY2_PIN, INPUT);
     Serial.println("[Pump] Outputs compile-time locked; keep relay IN wiring disconnected until commissioning");
     return;
   }
 
   // Set the configured inactive level before enabling output mode.
-  digitalWrite(PIN_PUMP_FIELD1, PUMP_RELAY_ACTIVE_LOW ? HIGH : LOW);
-  digitalWrite(PIN_PUMP_FIELD2, PUMP_RELAY_ACTIVE_LOW ? HIGH : LOW);
-  pinMode(PIN_PUMP_FIELD1, OUTPUT);
-  pinMode(PIN_PUMP_FIELD2, OUTPUT);
-  Serial.printf("[Pump] Relay outputs armed on GPIO %d and %d\n", PIN_PUMP_FIELD1, PIN_PUMP_FIELD2);
+  digitalWrite(RELAY1_PIN, PUMP_RELAY_ACTIVE_LOW ? HIGH : LOW);
+  digitalWrite(RELAY2_PIN, PUMP_RELAY_ACTIVE_LOW ? HIGH : LOW);
+  pinMode(RELAY1_PIN, OUTPUT);
+  pinMode(RELAY2_PIN, OUTPUT);
+  Serial.printf("[Pump] Relay outputs armed on GPIO %d and %d\n", RELAY1_PIN, RELAY2_PIN);
 }
 
 void sendPumpStatus() {
@@ -422,7 +423,7 @@ void pollPumpTargets() {
 void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
-  randomSeed(analogRead(33));
+  randomSeed(analogRead(SOIL2_PIN) ^ micros());
 
   pinMode(PIN_LED,        OUTPUT);
   pinMode(PIN_RESET_WIFI, INPUT_PULLUP);
@@ -466,15 +467,19 @@ void loop() {
   } else {
     tdsAvailable = readTDS(tds);
   }
-  float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
-  float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
+  int rawSoil1 = 0;
+  int rawSoil2 = 0;
+  float soil1 = readSoil(SOIL1_PIN, DRY1_VALUE, WET1_VALUE, rawSoil1);
+  float soil2 = readSoil(SOIL2_PIN, DRY2_VALUE, WET2_VALUE, rawSoil2);
 
+  Serial.println("-----------------------------");
   Serial.print("[Sensors] TDS: ");
   if (tdsAvailable) Serial.printf("%.0f ppm", tds);
   else Serial.print("unavailable (check sensor analog output)");
   if (phAvailable) Serial.printf(" | pH: %.1f", ph);
-  Serial.printf(" | F1: %.0f%% | F2: %.0f%%\n",
-                soil1, soil2);
+  Serial.println();
+  Serial.printf("Field 1 | Raw: %d | Moisture: %.0f%%\n", rawSoil1, soil1);
+  Serial.printf("Field 2 | Raw: %d | Moisture: %.0f%%\n", rawSoil2, soil2);
 
   blinkLed();
   sendToServer(1, tdsAvailable, tds, phAvailable, ph, soil1);

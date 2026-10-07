@@ -1,0 +1,120 @@
+#define SOIL1_PIN 32
+#define SOIL2_PIN 33
+
+#define RELAY1_PIN 26
+#define RELAY2_PIN 27
+
+// ===============================
+// SENSOR 1 CALIBRATION
+// ===============================
+#define DRY1_VALUE 4095
+#define WET1_VALUE 1800
+
+// ===============================
+// SENSOR 2 CALIBRATION
+// ===============================
+#define DRY2_VALUE 3900
+#define WET2_VALUE 1500
+
+// Pump starts below this moisture %
+#define MOISTURE_THRESHOLD 35
+
+// Pump maximum ON time
+#define PUMP_TIME 5000
+
+unsigned long pump1Start = 0;
+unsigned long pump2Start = 0;
+
+bool pump1Running = false;
+bool pump2Running = false;
+
+void setup() {
+  Serial.begin(115200);
+
+  analogReadResolution(12);
+
+  pinMode(RELAY1_PIN, OUTPUT);
+  pinMode(RELAY2_PIN, OUTPUT);
+
+  // Pumps OFF at startup
+  digitalWrite(RELAY1_PIN, HIGH);
+  digitalWrite(RELAY2_PIN, HIGH);
+
+  Serial.println("=== JalSetu Two-Pump Irrigation ===");
+}
+
+void loop() {
+
+  // Read sensors
+  int raw1 = analogRead(SOIL1_PIN);
+  int raw2 = analogRead(SOIL2_PIN);
+
+  // Convert using individual calibration
+  int moisture1 = map(raw1, DRY1_VALUE, WET1_VALUE, 0, 100);
+  int moisture2 = map(raw2, DRY2_VALUE, WET2_VALUE, 0, 100);
+
+  moisture1 = constrain(moisture1, 0, 100);
+  moisture2 = constrain(moisture2, 0, 100);
+
+  Serial.println("-----------------------------");
+
+  Serial.print("Field 1 | Raw: ");
+  Serial.print(raw1);
+  Serial.print(" | Moisture: ");
+  Serial.print(moisture1);
+  Serial.println("%");
+
+  Serial.print("Field 2 | Raw: ");
+  Serial.print(raw2);
+  Serial.print(" | Moisture: ");
+  Serial.print(moisture2);
+  Serial.println("%");
+
+
+  // ==========================================
+  // PUMP 1
+  // ==========================================
+
+  if (moisture1 < MOISTURE_THRESHOLD && !pump1Running) {
+
+    digitalWrite(RELAY1_PIN, LOW);
+    pump1Running = true;
+    pump1Start = millis();
+
+    Serial.println("FIELD 1 DRY -> PUMP 1 ON");
+  }
+
+  // Automatically turn Pump 1 OFF after 5 seconds
+  if (pump1Running && millis() - pump1Start >= PUMP_TIME) {
+
+    digitalWrite(RELAY1_PIN, HIGH);
+    pump1Running = false;
+
+    Serial.println("PUMP 1 -> OFF (5 seconds completed)");
+  }
+
+
+  // ==========================================
+  // PUMP 2
+  // ==========================================
+
+  if (moisture2 < MOISTURE_THRESHOLD && !pump2Running) {
+
+    digitalWrite(RELAY2_PIN, LOW);
+    pump2Running = true;
+    pump2Start = millis();
+
+    Serial.println("FIELD 2 DRY -> PUMP 2 ON");
+  }
+
+  // Automatically turn Pump 2 OFF after 5 seconds
+  if (pump2Running && millis() - pump2Start >= PUMP_TIME) {
+
+    digitalWrite(RELAY2_PIN, HIGH);
+    pump2Running = false;
+
+    Serial.println("PUMP 2 -> OFF (5 seconds completed)");
+  }
+
+  delay(500);
+}

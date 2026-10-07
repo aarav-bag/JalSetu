@@ -755,18 +755,18 @@ To make pH real, the firmware needs:
 Two analog soil sensors are read:
 
 - Field 1 on GPIO 32
-- Field 2 on GPIO 36
+- Field 2 on GPIO 33
 
 Each reading averages 10 analog samples. The firmware converts raw ADC values into percentage using separate dry/wet calibration endpoints:
 
 ```text
 Field 1:
   dry = 4095
-  wet = 500
+  wet = 1800
 
 Field 2:
-  dry = 4095
-  wet = 1100
+  dry = 3900
+  wet = 1500
 ```
 
 The percentage is constrained between 0 and 100.

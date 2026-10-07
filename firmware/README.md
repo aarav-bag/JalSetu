@@ -40,7 +40,7 @@ The LED blinks fast → credentials wiped → hotspot reopens → follow steps 2
 |-----|---------|
 | GPIO 34 | TDS sensor analog output |
 | GPIO 32 | Soil moisture — Field 1 |
-| GPIO 36 | Soil moisture — Field 2 (VP pin) |
+| GPIO 33 | Soil moisture — Field 2 |
 | GPIO 2  | Onboard LED (status indicator) |
 | GPIO 0  | BOOT button — hold 3 s to reset WiFi |
 
@@ -52,11 +52,11 @@ This firmware is for the sensor/pump-control ESP32, not the separate camera boar
 |---|---|
 | TDS board `AO` / `OUT` | GPIO 34 |
 | Soil probe for Field 1 `AO` | GPIO 32 |
-| Soil probe for Field 2 `AO` | GPIO 36 / VP |
+| Soil probe for Field 2 `AO` | GPIO 33 |
 | Each sensor `GND` | ESP32 GND (shared ground) |
 | Each sensor `VCC` | Power the module at its rated voltage; ensure every analog output stays at or below 3.3 V |
 
-GPIO 34 and GPIO 36 are input-only ADC pins, which is suitable for these analog sensor outputs. GPIO 35 is unused now that water-level sensing has been removed. The generated pH value uses no sensor pin.
+The soil readings are averaged over 10 samples and reported with both raw ADC values and calibrated percentages. Current soil calibration endpoints are Field 1 dry/wet `4095/1800` and Field 2 dry/wet `3900/1500`; adjust these after checking each probe in dry and wet soil. GPIO 35 and GPIO 36 are unused now that water-level sensing has been removed. The generated pH value uses no sensor pin.
 
 ## Two-pump relay setup
 
@@ -75,12 +75,12 @@ Control wiring for the current firmware:
 
 | ESP32 / relay pin | Connection |
 |---|---|
-| GPIO 25 | Field 1 relay `IN` |
-| GPIO 26 | Field 2 relay `IN` |
+| GPIO 26 | Field 1 relay `IN` |
+| GPIO 27 | Field 2 relay `IN` |
 | Regulated 5V | Relay module `VCC` |
 | ESP32 GND | Relay module `GND` when required by that module's control-input design |
 
-The current firmware is configured for GPIO 25 and 26 with active-low relay inputs (`PUMP_RELAY_ACTIVE_LOW true`), based on the user's hardware commissioning confirmation. `PUMP_OUTPUTS_ARMED` is enabled. Outputs initialize to OFF; the ESP32 only applies a pump target received from the authenticated server. Keep the app's per-field commissioning checks complete and use the saved maximum run time. If relay modules, pin mapping, trigger level, pump supply, or low-water protection change, turn the outputs off and re-verify before use.
+The firmware now follows the attached pin map: GPIO 26 for Field 1 and GPIO 27 for Field 2, with active-low relay inputs. Confirm the relay `IN` wires are on those GPIOs before flashing; the previous firmware pin map was different. `PUMP_OUTPUTS_ARMED` is enabled. Outputs initialize to OFF; the ESP32 only applies pump targets received from the authenticated server. Keep the app's per-field commissioning checks complete and use the saved maximum run time. If relay modules, pin mapping, trigger level, pump supply, or low-water protection change, turn the outputs off and re-verify before use.
 
 Automatic mode uses each field's latest soil reading and today's Open-Meteo rain probability:
 

@@ -23,15 +23,10 @@
  * Active monitoring hardware:
  *   • TDS analog sensor
  *   • Soil moisture probes for Field 1 and Field 2
+ *   • REL_35-style analog water-level sensor (raw ADC only; calibrate separately)
  *
-<<<<<<< HEAD
- * pH is simulated temporarily; no physical pH probe is connected.
- * No camera or water-level sensor is included.
- * Pump relay commands are supported and outputs initialize OFF.
-=======
  * No camera or simulated pH is included. Pump relay commands are supported
  * but the output arm switch is false by default.
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
  */
 
 #include <WiFi.h>
@@ -50,6 +45,7 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 #define PIN_TDS          34   // TDS sensor analog out
 #define PIN_SOIL_FIELD1  32   // Soil moisture — Field 1
 #define PIN_SOIL_FIELD2  36   // Soil moisture — Field 2 (VP pin)
+#define PIN_WATER_LEVEL  35   // Water level sensor analog out (ADC1)
 
 // ─── Control pins ─────────────────────────────────────────────
 #define PIN_LED          2    // Onboard LED (GPIO 2)
@@ -57,15 +53,9 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 #define PIN_PUMP_FIELD1  25   // Relay 1 IN — verify board pin labels
 #define PIN_PUMP_FIELD2  26   // Relay 2 IN — verify board pin labels
 
-<<<<<<< HEAD
 // Hardware commissioning has been confirmed by the user.
 // Keep the relay outputs inactive at boot; only server-approved targets can turn them on.
 #define PUMP_OUTPUTS_ARMED true
-=======
-// Keep false until relay GPIOs/polarity and physical safeguards are verified.
-// When false, the relay pins are left un-driven and reported as disabled.
-#define PUMP_OUTPUTS_ARMED false
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
 #define PUMP_RELAY_ACTIVE_LOW true
 
 // ─── Soil calibration ─────────────────────────────────────────
@@ -171,12 +161,6 @@ float readTDS() {
   return max(0.0f, tds);
 }
 
-// Temporary demonstration value until a physical pH probe is installed and calibrated.
-// Generates one-decimal values from 7.0 through 7.4; this is not a sensor measurement.
-float readSimulatedPH() {
-  return random(70, 75) / 10.0f;
-}
-
 // ══════════════════════════════════════════════════════════════
 //  Read Soil Moisture  (0–100 %)
 // ══════════════════════════════════════════════════════════════
@@ -188,10 +172,23 @@ float readSoil(int pin, int dryVal, int wetVal) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  Read water-level sensor raw ADC value (0–4095)
+//  Convert to percentage only after dry/full calibration.
+// ══════════════════════════════════════════════════════════════
+int readWaterLevelRaw() {
+  long sum = 0;
+  const int samples = 20;
+  for (int i = 0; i < samples; i++) {
+    sum += analogRead(PIN_WATER_LEVEL);
+    delay(5);
+  }
+  return (int)(sum / samples);
+}
+
 // ══════════════════════════════════════════════════════════════
 //  POST sensor data to JalSetu server
 // ══════════════════════════════════════════════════════════════
-void sendToServer(int fieldId, float tds, float ph, float soil) {
+void sendToServer(int fieldId, float tds, float soil, int waterLevelRaw) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Not connected — skipping upload");
     return;
@@ -206,8 +203,8 @@ void sendToServer(int fieldId, float tds, float ph, float soil) {
   doc["farmId"]       = FARM_ID;
   doc["fieldId"]      = fieldId;
   doc["tds"]          = (int)tds;
-  doc["ph"]           = ph;
   doc["soilMoisture"] = (int)soil;
+  doc["waterLevelRaw"] = waterLevelRaw;
 
   String body;
   serializeJson(doc, body);
@@ -369,7 +366,6 @@ void pollPumpTargets() {
 void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
-  randomSeed(analogRead(33));
 
   pinMode(PIN_LED,        OUTPUT);
   pinMode(PIN_RESET_WIFI, INPUT_PULLUP);
@@ -402,16 +398,16 @@ void loop() {
   lastSend = now;
 
   float tds   = readTDS();
-  float ph    = readSimulatedPH();
   float soil1 = readSoil(PIN_SOIL_FIELD1, SOIL1_DRY, SOIL1_WET);
   float soil2 = readSoil(PIN_SOIL_FIELD2, SOIL2_DRY, SOIL2_WET);
+  int waterLevelRaw = readWaterLevelRaw();
 
-  Serial.printf("[Sensors] TDS: %.0f ppm | pH (SIMULATED): %.1f | F1: %.0f%% | F2: %.0f%%\n",
-                tds, ph, soil1, soil2);
+  Serial.printf("[Sensors] TDS: %.0f ppm | F1: %.0f%% | F2: %.0f%% | Water level ADC: %d\n",
+                tds, soil1, soil2, waterLevelRaw);
 
   blinkLed();
-  sendToServer(1, tds, ph, soil1);
-  sendToServer(2, tds, ph, soil2);
+  sendToServer(1, tds, soil1, waterLevelRaw);
+  sendToServer(2, tds, soil2, waterLevelRaw);
 
   ledOn();   // back to solid ON = idle
 }

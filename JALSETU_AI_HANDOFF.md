@@ -695,17 +695,10 @@ firmware/README.md
 | 34 | TDS analog output |
 | 32 | Soil moisture, Field 1 |
 | 36 / VP | Soil moisture, Field 2 |
-<<<<<<< HEAD
-| 25 | Field 1 relay input (active-low; outputs armed) |
-| 26 | Field 2 relay input (active-low; outputs armed) |
-=======
 | 25 | Field 1 relay input (firmware output disabled by default) |
 | 26 | Field 2 relay input (firmware output disabled by default) |
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
 | 2 | Onboard status LED |
 | 0 | BOOT button, Wi-Fi reset |
-
-Water-level sensing is currently removed from the firmware and GPIO 35 is unused.
 
 ### Wi-Fi behavior
 
@@ -743,7 +736,13 @@ Limitations:
 
 ### pH module
 
-The current firmware sends temporary simulated pH values from 7.0 to 7.4 in 0.1 steps. No physical pH sensor is installed; do not treat these values or their derived advice as actual water measurements.
+The current firmware does **not** read a physical pH sensor.
+
+`readPH()` currently returns a random value selected from a neutral range around 7.0–7.5. This exists for demonstration and API/dashboard testing.
+
+This is one of the most important facts for another AI:
+
+> Any current pH number shown by the ESP32 path is simulated unless a physical pH probe and real calibration formula have been added separately.
 
 To make pH real, the firmware needs:
 
@@ -791,16 +790,13 @@ Every 30 seconds:
 1. Read TDS.
 2. Read Field 1 moisture.
 3. Read Field 2 moisture.
-4. POST one payload for Field 1.
-5. POST one payload for Field 2.
+4. Read raw water-level ADC.
+5. POST one payload for Field 1.
+6. POST one payload for Field 2.
 
-Both field uploads currently carry the same TDS and simulated pH readings, while soil moisture differs by field. No water-level value is sent.
+Both field uploads currently carry the same TDS and raw water-level readings, while soil moisture differs by field. No pH value is sent.
 
-<<<<<<< HEAD
 The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs are compile-time enabled after the user confirmed the hardware commissioning checks; outputs initialize OFF and only authenticated server targets can start a pump. Keep the per-field app commissioning checks and run-time limits in place. The current controller does not:
-=======
-The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs remain compile-time disabled by default; do not arm them until the installed relay inputs/polarity, pump supply, independent low-water cutoff, and run-time limit have been verified. The current controller does not:
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
 
 - Control a valve
 - Read calibrated tank level or flow
@@ -1126,20 +1122,13 @@ This section is critical for another AI so it does not incorrectly claim the pro
 
 ### Firmware limitations
 
-- No physical pH probe is installed; current pH telemetry is simulated. The app intentionally displays pH without a simulated label at the user's request.
+- No physical pH probe is installed; the current firmware does not send pH.
 - TDS requires calibration and has limited compensation.
 - Soil sensors use fixed calibration constants.
-<<<<<<< HEAD
 - Pump target polling, per-field controls, and relay outputs are enabled; the user confirmed hardware commissioning is complete.
 - Relay-state acknowledgements exist; flow feedback does not.
 - Pump power must match the physical 5 V pump label; the photographed 9 V batteries must not be connected directly.
 - Re-verify relay GPIO/polarity, regulated pump supply, independent low-water cutoff, and maximum run time if the hardware changes.
-=======
-- Pump target polling and per-field controls exist, but `PUMP_OUTPUTS_ARMED` is false by default.
-- Relay-state acknowledgements exist; flow feedback does not.
-- Pump power must match the physical 5 V pump label; the photographed 9 V batteries must not be connected directly.
-- Relay GPIO/polarity, regulated pump supply, independent low-water cutoff, and max run time must be verified before arming.
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
 - No offline queue exists.
 - Pump commands are polled from the server; there is no independent offline irrigation schedule.
 
@@ -1319,11 +1308,7 @@ When testing sensor features:
 ## 19. Fast context summary for an AI prompt
 
 ```text
-<<<<<<< HEAD
-JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors and TDS, sends temporary simulated pH values from 7.0 to 7.4, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. No water-level sensor is in the current firmware. The app displays pH without a simulated label at the user's request; the values are nevertheless not physical measurements. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; pause for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls retain per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` is enabled, with outputs initialized OFF. The user reports the hardware commissioning and calibration checks are complete. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
-=======
-JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors, TDS, and raw water level, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. pH is not sent because no physical probe is connected. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; stop for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls require per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` remains false by default. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
+JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The ESP32 reads two soil sensors, TDS, and raw water level, uploads telemetry every 30 seconds, and polls per-field pump targets every five seconds. pH is not sent because no physical probe is connected. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; pause for high rain, soil at/above 60%, stale inputs, safety lock, or run timeout. Pump controls retain per-field power/relay/low-water checks and firmware status; `PUMP_OUTPUTS_ARMED` is enabled, with outputs initialized OFF. The user reports the hardware commissioning and calibration checks are complete. Use a regulated 5V supply for the labeled 5V pumps, never the pictured 9V batteries directly. Preserve fail-closed behavior, farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
 ```
 
 ---

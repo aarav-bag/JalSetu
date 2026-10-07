@@ -119,7 +119,7 @@ Control wiring for the current firmware:
 | Regulated 5V | Relay module `VCC` |
 | ESP32 GND | Relay module `GND` when required by that module's control-input design |
 
-Confirm the exact module's input trigger level and test the relay with pump power disconnected. Firmware currently assumes active-low relay inputs (`PUMP_RELAY_ACTIVE_LOW true`); change this only to match a verified board. `PUMP_OUTPUTS_ARMED` is `false` by default. Keep it false until the pump supply is regulated 5V, relay pins/polarity are tested, an independent physical low-water cutoff is installed and tested, and the maximum run time is chosen. Leave relay `IN` disconnected while the output arm switch is false.
+The current firmware is configured for GPIO 25 and 26 with active-low relay inputs (`PUMP_RELAY_ACTIVE_LOW true`), based on the user's hardware commissioning confirmation. `PUMP_OUTPUTS_ARMED` is enabled. Outputs initialize to OFF; the ESP32 only applies a pump target received from the authenticated server. Keep the app's per-field commissioning checks complete and use the saved maximum run time. If relay modules, pin mapping, trigger level, pump supply, or low-water protection change, turn the outputs off and re-verify before use.
 
 Automatic mode uses each field's latest soil reading and today's Open-Meteo rain probability:
 

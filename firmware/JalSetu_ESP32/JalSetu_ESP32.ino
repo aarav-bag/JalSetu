@@ -34,6 +34,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <math.h>
+#include <string.h>
 
 // ─── JalSetu server ───────────────────────────────────────────
 const char* SERVER_URL = "https://jalsetu-rbeg.onrender.com/api/esp32/sensor-data";
@@ -233,12 +234,19 @@ float readDemoPH() {
 // ══════════════════════════════════════════════════════════════
 //  Read Soil Moisture  (0–100 %)
 // ══════════════════════════════════════════════════════════════
+// Uses the attached sketch's dry/wet endpoint conversion with the main
+// module's calibrated endpoints and 10-sample averaging.
+float calculateMoisture(int adc, int dryValue, int wetValue) {
+  if (dryValue == wetValue) return 0.0f;
+  const float moisture = (float)(dryValue - adc) / (float)(dryValue - wetValue) * 100.0f;
+  return constrain(moisture, 0.0f, 100.0f);
+}
+
 float readSoil(int pin, int dryVal, int wetVal, int &rawAverage) {
   long sum = 0;
   for (int i = 0; i < 10; i++) { sum += analogRead(pin); delay(10); }
   rawAverage = sum / 10;
-  float pct = (float)(dryVal - rawAverage) / (dryVal - wetVal) * 100.0f;
-  return constrain(pct, 0.0f, 100.0f);
+  return calculateMoisture(rawAverage, dryVal, wetVal);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -360,6 +368,25 @@ void enforcePumpSafety() {
   }
 }
 
+void applyManualPumpCommand(int pumpIndex, bool turnOn) {
+  if (pumpIndex < 0 || pumpIndex > 1) return;
+
+  // Manual ON/OFF is requested by the authenticated JalSetu app through the
+  // existing server target API. The firmware run-time cap still takes priority.
+  if (!PUMP_OUTPUTS_ARMED || pumpRuntimeExpired[pumpIndex]) {
+    turnOn = false;
+  }
+
+  if (turnOn != pumpIsOn[pumpIndex]) {
+    Serial.printf(
+      "[Pump] Field %d app pump target -> %s\n",
+      pumpIndex + 1,
+      turnOn ? "ON" : "OFF"
+    );
+  }
+  setPumpOutput(pumpIndex, turnOn);
+}
+
 void pollPumpTargets() {
   if (WiFi.status() != WL_CONNECTED) return;
 
@@ -395,7 +422,20 @@ void pollPumpTargets() {
     const int index = fieldIndex - 1;
     seen[index] = true;
 
+    // App manual commands are applied here; AUTO targets stay server-decided
+    // so soil thresholds, rain probability, and stale-data handling stay aligned.
+    const char* targetMode = target["mode"] | "";
+    const bool manualMode = strcmp(targetMode, "manual") == 0;
+    const bool offMode = strcmp(targetMode, "off") == 0;
+    const bool autoMode = strcmp(targetMode, "auto") == 0;
+    if (!manualMode && !offMode && !autoMode) {
+      Serial.printf("[Pump] Field %d received an unknown mode; forcing OFF\n", fieldIndex);
+      setPumpOutput(index, false);
+      continue;
+    }
+
     bool desiredOn = target["desiredOn"] | false;
+    if (offMode) desiredOn = false;
     unsigned long maxRunMs = (target["maxRunSeconds"] | 60UL) * 1000UL;
     if (maxRunMs > PUMP_MAX_RUN_MS) maxRunMs = PUMP_MAX_RUN_MS;
     pumpMaxRunMs[index] = maxRunMs;
@@ -408,7 +448,11 @@ void pollPumpTargets() {
       Serial.printf("[Pump] Field %d stopped at configured run limit\n", fieldIndex);
     }
     if (!PUMP_OUTPUTS_ARMED) desiredOn = false;
-    setPumpOutput(index, desiredOn);
+    if (manualMode || offMode) {
+      applyManualPumpCommand(index, desiredOn);
+    } else {
+      setPumpOutput(index, desiredOn);
+    }
   }
 
   for (int i = 0; i < 2; i++) {

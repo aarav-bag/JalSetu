@@ -834,13 +834,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Invalid secret" });
     }
 
-    // Update in-memory status
-    esp32LastSeen = new Date();
-    esp32LastData = {
-      tds: data.tds,
-      soilMoisture: data.soilMoisture,
-      ph: data.ph,
-    };
+    // Resolve and validate sequential field indexes before persisting any part
+    // of the telemetry payload. The device sends 1-based field indexes.
+    let soilTargetField: Awaited<ReturnType<typeof storage.getFieldsByFarmId>>[number] | undefined;
+    if (data.soilMoisture !== undefined) {
+      const farmFields = await storage.getFieldsByFarmId(data.farmId);
+      farmFields.sort((a, b) => a.id - b.id);
+      soilTargetField = farmFields[data.fieldId - 1];
+      if (!soilTargetField) {
+        return res.status(422).json({
+          error: `Farm has ${farmFields.length} field(s); received fieldId ${data.fieldId} which is out of range`,
+        });
+      }
+    }
 
     const saved: Record<string, any> = {};
 
@@ -855,25 +861,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     // Save soil moisture reading
-    // ESP32 sends fieldId as a 1-based sequential index (1, 2, 3…)
-    // Map it to the actual DB field id by looking up the farm's fields ordered by id
     if (data.soilMoisture !== undefined) {
-      const farmFields = await storage.getFieldsByFarmId(data.farmId);
-      farmFields.sort((a, b) => a.id - b.id);
-      const targetField = farmFields[data.fieldId - 1]; // 1-based → 0-based index
-      if (!targetField) {
-        return res.status(422).json({
-          error: `Farm has ${farmFields.length} field(s); received fieldId ${data.fieldId} which is out of range`,
-        });
-      }
       const level = Math.round(data.soilMoisture);
       saved.soilMoisture = await storage.createSoilMoisture({
         farmId: data.farmId,
-        fieldId: targetField.id,
+        fieldId: soilTargetField!.id,
         moistureLevel: level,
         status: level >= 60 ? "optimal" : level >= 35 ? "warning" : "danger",
       });
     }
+
+    // Report the device online only after all measurements in this payload
+    // have been accepted and saved; invalid field indexes must not look live.
+    esp32LastSeen = new Date();
+    esp32LastData = {
+      tds: data.tds,
+      soilMoisture: data.soilMoisture,
+      ph: data.ph,
+    };
 
     res.status(201).json({ success: true, saved });
   }));

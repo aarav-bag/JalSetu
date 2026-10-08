@@ -287,6 +287,8 @@ const Irrigation = () => {
   const { location, isSet } = useUserLocation();
   const configuredLocation = isSet ? location : null;
   const [showLocationPicker, setShowLocationPicker] = useState(!isSet);
+  const [locationSyncError, setLocationSyncError] = useState(false);
+  const [locationSyncAttempt, setLocationSyncAttempt] = useState(0);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -295,7 +297,10 @@ const Irrigation = () => {
     isLoading: isFarmLoading,
     isError: isFarmError,
     refetch: refetchFarm,
-  } = useQuery<FarmData>({ queryKey: ["/api/user-dashboard"] });
+  } = useQuery<FarmData>({
+    queryKey: ["/api/user-dashboard"],
+    refetchInterval: 30_000,
+  });
 
   const {
     data: weather,
@@ -317,19 +322,29 @@ const Irrigation = () => {
   });
 
   useEffect(() => {
-    if (!configuredLocation) return;
+    if (!configuredLocation) {
+      setLocationSyncError(false);
+      return;
+    }
+
+    let active = true;
+    setLocationSyncError(false);
     void apiRequest("/api/irrigation/location", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lat: configuredLocation.lat, lon: configuredLocation.lon }),
+    }).then(() => {
+      if (active) {
+        void queryClient.invalidateQueries({ queryKey: ["/api/irrigation/pumps"] });
+      }
     }).catch(() => {
-      toast({
-        title: "Farm location could not be synced",
-        description: "Automatic irrigation needs a saved farm location to check rain forecasts.",
-        variant: "destructive",
-      });
+      if (active) setLocationSyncError(true);
     });
-  }, [configuredLocation?.lat, configuredLocation?.lon, toast]);
+
+    return () => {
+      active = false;
+    };
+  }, [configuredLocation?.lat, configuredLocation?.lon, locationSyncAttempt, queryClient]);
 
   const pumpQuery = useQuery<PumpControlResponse>({
     queryKey: ["/api/irrigation/pumps"],
@@ -521,6 +536,27 @@ const Irrigation = () => {
               {showLocationPicker && (
                 <div className="mb-4">
                   <LocationPicker compact={false} onSet={() => setShowLocationPicker(false)} />
+                </div>
+              )}
+
+              {locationSyncError && (
+                <div
+                  className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-3"
+                  role="alert"
+                >
+                  <div>
+                    <p className="text-sm font-semibold card-heading">Farm location could not be synced</p>
+                    <p className="mt-1 text-xs leading-relaxed card-body">
+                      Automatic irrigation stays blocked until the location is saved to your farm.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLocationSyncAttempt((attempt) => attempt + 1)}
+                    className="rounded-xl border border-amber-700/20 px-3 py-2 text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-700/5 dark:text-amber-100"
+                  >
+                    Retry sync
+                  </button>
                 </div>
               )}
 

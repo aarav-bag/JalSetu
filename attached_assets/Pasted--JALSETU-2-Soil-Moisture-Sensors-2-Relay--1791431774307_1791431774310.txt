@@ -1,0 +1,165 @@
+// ============================================
+// JALSETU
+// 2 Soil Moisture Sensors
+// 2 Relay Modules
+// 2 Pumps
+// ============================================
+
+#define SOIL1_PIN 32
+#define SOIL2_PIN 33
+
+#define RELAY1_PIN 25
+#define RELAY2_PIN 26
+
+// ============================================
+// CALIBRATION VALUES
+// Replace these with your actual readings
+// ============================================
+
+#define SOIL1_DRY 4095
+#define SOIL1_WET 1000
+
+#define SOIL2_DRY 4095
+#define SOIL2_WET 0
+
+// ============================================
+// PUMP THRESHOLDS
+// ============================================
+
+#define PUMP_ON_LEVEL 35
+#define PUMP_OFF_LEVEL 60
+
+
+void setup() {
+
+  Serial.begin(115200);
+
+  analogReadResolution(12);  // ADC = 0 to 4095
+
+  pinMode(RELAY1_PIN, OUTPUT);
+  pinMode(RELAY2_PIN, OUTPUT);
+
+  // Pumps OFF at startup
+  digitalWrite(RELAY1_PIN, HIGH);
+  digitalWrite(RELAY2_PIN, HIGH);
+
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("        JALSETU IRRIGATION TEST");
+  Serial.println("========================================");
+  Serial.println("2 Soil Sensors | 2 Relays | 2 Pumps");
+  Serial.println();
+}
+
+
+int calculateMoisture(int adc, int dryValue, int wetValue) {
+
+  int moisture = map(
+    adc,
+    dryValue,
+    wetValue,
+    0,
+    100
+  );
+
+  return constrain(moisture, 0, 100);
+}
+
+
+void loop() {
+
+  // ============================================
+  // READ ADC
+  // ============================================
+
+  int adc1 = analogRead(SOIL1_PIN);
+  int adc2 = analogRead(SOIL2_PIN);
+
+
+  // ============================================
+  // CALCULATE MOISTURE
+  // ============================================
+
+  int moisture1 = calculateMoisture(
+    adc1,
+    SOIL1_DRY,
+    SOIL1_WET
+  );
+
+  int moisture2 = calculateMoisture(
+    adc2,
+    SOIL2_DRY,
+    SOIL2_WET
+  );
+
+
+  // ============================================
+  // PUMP 1
+  // ============================================
+
+  if (moisture1 < PUMP_ON_LEVEL) {
+
+    digitalWrite(RELAY1_PIN, LOW);
+
+  }
+
+  if (moisture1 >= PUMP_OFF_LEVEL) {
+
+    digitalWrite(RELAY1_PIN, HIGH);
+
+  }
+
+
+  // ============================================
+  // PUMP 2
+  // ============================================
+
+  if (moisture2 < PUMP_ON_LEVEL) {
+
+    digitalWrite(RELAY2_PIN, LOW);
+
+  }
+
+  if (moisture2 >= PUMP_OFF_LEVEL) {
+
+    digitalWrite(RELAY2_PIN, HIGH);
+
+  }
+
+
+  // ============================================
+  // SERIAL MONITOR
+  // ============================================
+
+  Serial.println("----------------------------------------");
+
+  Serial.print("SOIL 1  | ADC: ");
+  Serial.print(adc1);
+
+  Serial.print(" | Moisture: ");
+  Serial.print(moisture1);
+
+  Serial.print("% | Pump 1: ");
+
+  if (digitalRead(RELAY1_PIN) == LOW)
+    Serial.println("ON");
+  else
+    Serial.println("OFF");
+
+
+  Serial.print("SOIL 2  | ADC: ");
+  Serial.print(adc2);
+
+  Serial.print(" | Moisture: ");
+  Serial.print(moisture2);
+
+  Serial.print("% | Pump 2: ");
+
+  if (digitalRead(RELAY2_PIN) == LOW)
+    Serial.println("ON");
+  else
+    Serial.println("OFF");
+
+
+  delay(1000);
+}

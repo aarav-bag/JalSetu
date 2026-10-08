@@ -60,7 +60,7 @@ The soil readings are averaged over 10 samples and reported with both raw ADC va
 
 ## Two-pump relay setup
 
-The Irrigation page in the app has a two-pump wiring tutorial and separate Field 1 / Field 2 manual and automatic controls. The relay-contact wiring for each pump is:
+The Irrigation page in the app has a two-pump wiring tutorial and separate Field 1 / Field 2 ON, OFF, and AUTO controls. The relay-contact wiring for each pump is:
 
 ```text
 regulated 5V pump supply + -> inline fuse -> relay COM
@@ -80,7 +80,7 @@ Control wiring for the current firmware:
 | Regulated 5V | Relay module `VCC` |
 | ESP32 GND | Relay module `GND` when required by that module's control-input design |
 
-The firmware now follows the attached pin map: GPIO 26 for Field 1 and GPIO 27 for Field 2, with active-low relay inputs. Confirm the relay `IN` wires are on those GPIOs before flashing; the previous firmware pin map was different. `PUMP_OUTPUTS_ARMED` is enabled. Outputs initialize to OFF; the ESP32 only applies pump targets received from the authenticated server. Keep the app's per-field commissioning checks complete; both the app/server and firmware enforce a 5-second maximum per start. If relay modules, pin mapping, trigger level, pump supply, or low-water protection change, turn the outputs off and re-verify before use.
+The firmware now follows the attached pin map: GPIO 26 for Field 1 and GPIO 27 for Field 2, with active-low relay inputs. Confirm the relay `IN` wires are on those GPIOs before flashing; the previous firmware pin map was different. `PUMP_OUTPUTS_ARMED` is enabled. Outputs initialize to OFF; the ESP32 only applies pump targets received from the authenticated server. Each start has a 5-second maximum in the server and firmware, and the ESP32 turns pumps off if server contact is lost. If relay modules, pin mapping, trigger level, pump supply, or physical low-water protection change, turn the outputs off and re-verify before use.
 
 Automatic mode uses each field's latest soil reading and today's Open-Meteo rain probability:
 

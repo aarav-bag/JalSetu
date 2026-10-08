@@ -70,6 +70,8 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 #define WET1_VALUE 1700
 #define DRY2_VALUE 4095
 #define WET2_VALUE 2100
+#define PUMP_ON_LEVEL 35
+#define PUMP_OFF_LEVEL 60
 
 // ─── Timing ───────────────────────────────────────────────────
 const unsigned long INTERVAL_MS      = 30000;  // 30 s between uploads
@@ -77,12 +79,20 @@ const unsigned long RESET_HOLD_MS    = 3000;   // hold 3 s to reset WiFi
 const unsigned long PUMP_POLL_MS     = 5000;   // poll app commands every 5 s
 const unsigned long PUMP_OFFLINE_MS  = 15000;  // force off without server contact
 const unsigned long PUMP_MAX_RUN_MS  = 5000;   // firmware hard cap: 5 seconds
+const unsigned long PUMP_CONTROL_SAMPLE_MS = 250;
+
+enum PumpMode { PUMP_MODE_OFF, PUMP_MODE_MANUAL, PUMP_MODE_AUTO };
 
 unsigned long lastSend = 0;
 unsigned long lastPumpPoll = 0;
+unsigned long lastPumpControlSample = 0;
 unsigned long lastPumpServerContact = 0;
 bool pumpIsOn[2] = { false, false };
 bool pumpRuntimeExpired[2] = { false, false };
+bool pumpSawAutoCooldown[2] = { false, false };
+bool pumpAutoBlocked[2] = { false, false };
+PumpMode pumpMode[2] = { PUMP_MODE_OFF, PUMP_MODE_OFF };
+float localSoilMoisture[2] = { 0.0f, 0.0f };
 unsigned long pumpStartedAt[2] = { 0, 0 };
 unsigned long pumpMaxRunMs[2] = { 5000, 5000 };
 
@@ -263,6 +273,8 @@ void sendToServer(int fieldId, bool tdsAvailable, float tds, bool phAvailable, f
 
   HTTPClient http;
   http.begin(SERVER_URL);
+  http.setTimeout(1000);
+  http.setConnectTimeout(1000);
   http.addHeader("Content-Type", "application/json");
 
   StaticJsonDocument<256> doc;
@@ -319,11 +331,15 @@ void initializePumpOutputs() {
 }
 
 void sendPumpStatus() {
+  // Keep network work out of an active pump run so it cannot delay the hard
+  // five-second cutoff. The next poll reports the stopped state.
+  if (pumpIsOn[0] || pumpIsOn[1]) return;
   if (WiFi.status() != WL_CONNECTED) return;
 
   HTTPClient http;
   http.begin(PUMP_STATUS_URL);
-  http.setTimeout(4000);
+  http.setTimeout(1000);
+  http.setConnectTimeout(1000);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Jalsetu-Device-Secret", SECRET);
 
@@ -342,8 +358,7 @@ void sendPumpStatus() {
   serializeJson(doc, body);
   const int code = http.POST(body);
   if (code >= 200 && code < 300) {
-    pumpRuntimeExpired[0] = false;
-    pumpRuntimeExpired[1] = false;
+    Serial.println("[Pump] Status reported to app");
   } else {
     Serial.printf("[Pump] Status report failed: HTTP %d\n", code);
   }
@@ -358,6 +373,7 @@ void enforcePumpSafety() {
     if (now - pumpStartedAt[i] >= pumpMaxRunMs[i]) {
       setPumpOutput(i, false);
       pumpRuntimeExpired[i] = true;
+      pumpSawAutoCooldown[i] = false;
       Serial.printf("[Pump] Field %d stopped at configured run limit\n", i + 1);
     } else if (
       lastPumpServerContact == 0
@@ -365,6 +381,7 @@ void enforcePumpSafety() {
     ) {
       setPumpOutput(i, false);
       pumpRuntimeExpired[i] = true;
+      pumpSawAutoCooldown[i] = false;
       Serial.printf("[Pump] Field %d stopped: server connection lost\n", i + 1);
     }
   }
@@ -389,13 +406,45 @@ void applyManualPumpCommand(int pumpIndex, bool turnOn) {
   setPumpOutput(pumpIndex, turnOn);
 }
 
+void updateAutomaticPumpControl() {
+  const unsigned long now = millis();
+  if (now - lastPumpControlSample < PUMP_CONTROL_SAMPLE_MS) return;
+  lastPumpControlSample = now;
+
+  const int rawSoil[2] = { analogRead(SOIL1_PIN), analogRead(SOIL2_PIN) };
+  localSoilMoisture[0] = calculateMoisture(rawSoil[0], DRY1_VALUE, WET1_VALUE);
+  localSoilMoisture[1] = calculateMoisture(rawSoil[1], DRY2_VALUE, WET2_VALUE);
+
+  for (int i = 0; i < 2; i++) {
+    if (pumpMode[i] != PUMP_MODE_AUTO) continue;
+
+    const bool serverConnected =
+      WiFi.status() == WL_CONNECTED
+      && lastPumpServerContact != 0
+      && now - lastPumpServerContact <= PUMP_OFFLINE_MS;
+    if (!serverConnected || pumpAutoBlocked[i] || pumpRuntimeExpired[i]) {
+      setPumpOutput(i, false);
+      continue;
+    }
+
+    // Match the supplied sketch: start below 35%, stop at 60%, and keep the
+    // current relay state between those levels for simple hysteresis.
+    if (localSoilMoisture[i] >= PUMP_OFF_LEVEL) {
+      setPumpOutput(i, false);
+    } else if (localSoilMoisture[i] < PUMP_ON_LEVEL) {
+      setPumpOutput(i, true);
+    }
+  }
+}
+
 void pollPumpTargets() {
   if (WiFi.status() != WL_CONNECTED) return;
 
   HTTPClient http;
   const String url = String(PUMP_TARGETS_URL) + "?farmId=" + String(FARM_ID);
   http.begin(url);
-  http.setTimeout(5000);
+  http.setTimeout(1000);
+  http.setConnectTimeout(1000);
   http.addHeader("X-Jalsetu-Device-Secret", SECRET);
   const int code = http.GET();
 
@@ -424,41 +473,60 @@ void pollPumpTargets() {
     const int index = fieldIndex - 1;
     seen[index] = true;
 
-    // App manual commands are applied here; AUTO targets stay server-decided
-    // so soil thresholds, rain probability, and stale-data handling stay aligned.
     const char* targetMode = target["mode"] | "";
     const bool manualMode = strcmp(targetMode, "manual") == 0;
     const bool offMode = strcmp(targetMode, "off") == 0;
     const bool autoMode = strcmp(targetMode, "auto") == 0;
     if (!manualMode && !offMode && !autoMode) {
       Serial.printf("[Pump] Field %d received an unknown mode; forcing OFF\n", fieldIndex);
+      pumpMode[index] = PUMP_MODE_OFF;
       setPumpOutput(index, false);
       continue;
     }
 
     bool desiredOn = target["desiredOn"] | false;
-    if (offMode) desiredOn = false;
     unsigned long maxRunMs = (target["maxRunSeconds"] | 60UL) * 1000UL;
     if (maxRunMs > PUMP_MAX_RUN_MS) maxRunMs = PUMP_MAX_RUN_MS;
     pumpMaxRunMs[index] = maxRunMs;
 
-    if (pumpRuntimeExpired[index]) {
-      desiredOn = false;
-    } else if (desiredOn && pumpIsOn[index] && millis() - pumpStartedAt[index] >= maxRunMs) {
-      desiredOn = false;
-      pumpRuntimeExpired[index] = true;
-      Serial.printf("[Pump] Field %d stopped at configured run limit\n", fieldIndex);
-    }
-    if (!PUMP_OUTPUTS_ARMED) desiredOn = false;
-    if (manualMode || offMode) {
+    if (offMode) {
+      pumpMode[index] = PUMP_MODE_OFF;
+      pumpAutoBlocked[index] = false;
+      pumpRuntimeExpired[index] = false;
+      pumpSawAutoCooldown[index] = false;
+      setPumpOutput(index, false);
+    } else if (manualMode) {
+      if (pumpMode[index] != PUMP_MODE_MANUAL) {
+        pumpRuntimeExpired[index] = false;
+        pumpSawAutoCooldown[index] = false;
+      }
+      pumpMode[index] = PUMP_MODE_MANUAL;
+      pumpAutoBlocked[index] = false;
+      if (pumpRuntimeExpired[index]) desiredOn = false;
       applyManualPumpCommand(index, desiredOn);
     } else {
-      setPumpOutput(index, desiredOn);
+      pumpMode[index] = PUMP_MODE_AUTO;
+      pumpAutoBlocked[index] = target["autoBlocked"] | false;
+      if (pumpAutoBlocked[index]) {
+        pumpSawAutoCooldown[index] = true;
+      } else if (pumpRuntimeExpired[index] && pumpSawAutoCooldown[index]) {
+        // Re-arm only after the server's post-run lockout ends (normally when
+        // the probe reports wet soil, or after the safety timeout).
+        pumpRuntimeExpired[index] = false;
+        pumpSawAutoCooldown[index] = false;
+      }
+      if (pumpAutoBlocked[index] || pumpRuntimeExpired[index]) {
+        setPumpOutput(index, false);
+      }
     }
   }
 
   for (int i = 0; i < 2; i++) {
-    if (!seen[i]) setPumpOutput(i, false);
+    if (!seen[i]) {
+      pumpMode[i] = PUMP_MODE_OFF;
+      pumpAutoBlocked[i] = false;
+      setPumpOutput(i, false);
+    }
   }
   sendPumpStatus();
 }
@@ -497,8 +565,11 @@ void loop() {
     lastPumpPoll = now;
     pollPumpTargets();
   }
+  enforcePumpSafety();
+  updateAutomaticPumpControl();
 
   if (now - lastSend < INTERVAL_MS) return;
+  if (pumpIsOn[0] || pumpIsOn[1]) return;
   lastSend = now;
 
   float tds = 0.0f;

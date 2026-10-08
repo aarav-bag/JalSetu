@@ -108,7 +108,6 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
           actualOn: row.actualOn,
           soilMoisture,
           soilObservedAt: row.soilObservedAt ? new Date(row.soilObservedAt) : null,
-          rainChance,
           maxRunSeconds: IRRIGATION_POLICY.maxRunSeconds,
           actualUpdatedAt: row.actualUpdatedAt ? new Date(row.actualUpdatedAt) : null,
           cooldownUntil: row.cooldownUntil ? new Date(row.cooldownUntil) : null,
@@ -121,6 +120,7 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
           rainChance,
           desiredOn: decision.desiredOn,
           decisionReason: decision.reason,
+          autoBlocked: decision.autoBlocked,
         };
       }),
     });
@@ -141,9 +141,6 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     if (!field || field.farmId !== farm.id) return res.status(404).json({ error: "Field not found" });
     await ensurePumpRows(farm.id);
 
-    if (values.mode === "auto" && (farm.latitude === null || farm.longitude === null)) {
-      return res.status(409).json({ error: "Set the farm location before enabling rain-aware automatic irrigation" });
-    }
     if (values.mode === "manual" && values.manualOn === undefined) {
       return res.status(400).json({ error: "Manual mode requires manualOn" });
     }
@@ -169,13 +166,6 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     const farm = await storage.getFarm(farmId);
     if (!farm) return res.status(404).json({ error: "Farm not found" });
     await ensurePumpRows(farm.id);
-
-    let rainChance: number | null = null;
-    try {
-      rainChance = await getCurrentRainChance(farm.latitude ?? null, farm.longitude ?? null);
-    } catch {
-      rainChance = null;
-    }
 
     const { rows } = await pool.query(
       `SELECT f.id AS "fieldId", c.mode, c.manual_on AS "manualOn",
@@ -205,7 +195,6 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
         actualOn: row.actualOn,
         soilMoisture: row.soilMoisture === null ? null : Number(row.soilMoisture),
         soilObservedAt: row.soilObservedAt ? new Date(row.soilObservedAt) : null,
-        rainChance,
         maxRunSeconds: IRRIGATION_POLICY.maxRunSeconds,
         actualUpdatedAt: row.actualUpdatedAt ? new Date(row.actualUpdatedAt) : null,
         cooldownUntil: row.cooldownUntil ? new Date(row.cooldownUntil) : null,
@@ -214,9 +203,9 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
         fieldIndex: index + 1,
         desiredOn: decision.desiredOn,
         reason: decision.reason,
+        autoBlocked: decision.autoBlocked,
         maxRunSeconds: IRRIGATION_POLICY.maxRunSeconds,
         mode: row.mode as string,
-        rainChance,
       };
     });
 

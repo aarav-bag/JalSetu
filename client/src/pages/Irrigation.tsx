@@ -226,7 +226,7 @@ function PumpControlCard({ pump, busy, onMode, onManual }: PumpControlCardProps)
         </div>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold card-muted">
           <span>Soil: {pump.soilMoisture === null ? "unavailable" : `${pump.soilMoisture}%`}</span>
-          <span>Today’s rain chance: {pump.rainChance === null ? "unavailable" : `${pump.rainChance}%`}</span>
+          <span>Rain chance (info): {pump.rainChance === null ? "unavailable" : `${pump.rainChance}%`}</span>
           <span>Device: {pump.actualOn ? "ON" : "OFF"}</span>
         </div>
       </div>
@@ -647,7 +647,7 @@ const Irrigation = () => {
             <div className="mb-3 px-1">
               <h2 id="pump-title" className="text-base font-bold card-heading">Pump controls</h2>
               <p className="mt-0.5 text-xs card-muted">
-                Choose ON or OFF for manual control, or AUTO to use soil moisture and rain. Automatic irrigation starts below 35% soil moisture when rain chance is below 50%, and stops at 60% moisture or high rain.
+                AUTO uses the soil probes: each pump starts below 35% moisture and stops at 60%. Manual ON/OFF overrides AUTO, and every run stops after 5 seconds.
               </p>
             </div>
 

@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { z } from "zod";
 import { insertUserSchema, insertFarmSchema, insertFieldSchema, insertWaterQualitySchema, insertSoilMoistureSchema, insertWeatherPredictionSchema, insertIrrigationTipSchema } from "@shared/schema";
 import passport from "passport";
@@ -11,6 +11,7 @@ import { handleLocalChat } from "./localChatbot";
 import { fetchRealWeather, fetchDefaultWeather } from "./weather";
 import { generateRecommendations } from "./recommendations";
 import { registerIrrigationRoutes } from "./irrigationRoutes";
+import { IRRIGATION_POLICY } from "./irrigationPolicy";
 
 // Extend Express Session to include user property
 declare module 'express-session' {
@@ -869,6 +870,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         moistureLevel: level,
         status: level >= 60 ? "optimal" : level >= 35 ? "warning" : "danger",
       });
+      if (level >= IRRIGATION_POLICY.soilStopAtOrAbove) {
+        await pool.query(
+          `UPDATE irrigation_pump_controls
+           SET cooldown_until = NULL, updated_at = NOW()
+           WHERE field_id = $1 AND farm_id = $2`,
+          [soilTargetField!.id, data.farmId],
+        );
+      }
     }
 
     // Report the device online only after all measurements in this payload

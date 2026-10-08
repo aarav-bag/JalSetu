@@ -3,7 +3,6 @@ export type PumpMode = "off" | "manual" | "auto";
 export const IRRIGATION_POLICY = {
   soilStartBelow: 35,
   soilStopAtOrAbove: 60,
-  highRainChanceAt: 50,
   soilFreshForMs: 2 * 60 * 1000,
   maxRunSeconds: 5,
 } as const;
@@ -14,7 +13,6 @@ export interface PumpDecisionInput {
   actualOn: boolean;
   soilMoisture: number | null;
   soilObservedAt: Date | null;
-  rainChance: number | null;
   maxRunSeconds: number;
   actualUpdatedAt: Date | null;
   cooldownUntil: Date | null;
@@ -24,6 +22,7 @@ export interface PumpDecisionInput {
 export interface PumpDecision {
   desiredOn: boolean;
   reason: string;
+  autoBlocked: boolean;
 }
 
 export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
@@ -34,7 +33,11 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
     && input.cooldownUntil
     && input.cooldownUntil.getTime() > now.getTime()
   ) {
-    return { desiredOn: false, reason: "Pump is in its post-run safety cooldown" };
+    return {
+      desiredOn: false,
+      reason: "Pump is in its post-run safety cooldown",
+      autoBlocked: true,
+    };
   }
 
   const maxRunMs = Math.max(5, Math.min(IRRIGATION_POLICY.maxRunSeconds, input.maxRunSeconds)) * 1000;
@@ -43,17 +46,18 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
     && input.actualUpdatedAt
     && now.getTime() - input.actualUpdatedAt.getTime() >= maxRunMs
   ) {
-    return { desiredOn: false, reason: "Maximum run time reached" };
+    return { desiredOn: false, reason: "Maximum run time reached", autoBlocked: false };
   }
 
   if (input.mode === "off") {
-    return { desiredOn: false, reason: "Pump is set to off" };
+    return { desiredOn: false, reason: "Pump is set to off", autoBlocked: false };
   }
 
   if (input.mode === "manual") {
     return {
       desiredOn: input.manualOn,
       reason: input.manualOn ? "Manual app command" : "Manually stopped in app",
+      autoBlocked: false,
     };
   }
 
@@ -63,29 +67,28 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
     || !input.soilObservedAt
     || now.getTime() - input.soilObservedAt.getTime() > IRRIGATION_POLICY.soilFreshForMs
   ) {
-    return { desiredOn: false, reason: "Soil reading is missing or stale" };
-  }
-
-  if (input.rainChance === null || !Number.isFinite(input.rainChance)) {
-    return { desiredOn: false, reason: "Rain forecast unavailable; automatic start blocked" };
-  }
-
-  if (input.rainChance >= IRRIGATION_POLICY.highRainChanceAt) {
-    return { desiredOn: false, reason: "Rain chance is high; automatic irrigation is paused" };
+    return {
+      desiredOn: false,
+      reason: "Soil reading is missing or stale",
+      autoBlocked: false,
+    };
   }
 
   if (input.soilMoisture < IRRIGATION_POLICY.soilStartBelow) {
-    return { desiredOn: true, reason: "Soil is dry and rain chance is low" };
+    return { desiredOn: true, reason: "Soil is dry", autoBlocked: false };
   }
 
   if (input.soilMoisture >= IRRIGATION_POLICY.soilStopAtOrAbove) {
-    return { desiredOn: false, reason: "Soil moisture reached the stop threshold" };
+    return {
+      desiredOn: false,
+      reason: "Soil moisture reached the stop threshold",
+      autoBlocked: false,
+    };
   }
 
   return {
     desiredOn: input.actualOn,
-    reason: input.actualOn
-      ? "Maintaining irrigation until the stop threshold"
-      : "Soil moisture is between the start and stop thresholds",
+    reason: input.actualOn ? "Maintaining pump state between thresholds" : "Soil is between thresholds",
+    autoBlocked: false,
   };
 }

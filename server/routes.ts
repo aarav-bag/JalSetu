@@ -798,19 +798,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── ESP32 Integration (demo — single hardcoded secret) ───────────
   // Secret the ESP32 sends in every request. Change this if you want.
   const ESP32_SECRET = "JALSETU2024";
-  registerIrrigationRoutes(app, ESP32_SECRET);
-
-  // In-memory status: tracks the last time the ESP32 sent data
+  const ESP32_ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
   let esp32LastSeen: Date | null = null;
   let esp32LastData: { tds?: number; soilMoisture?: number; ph?: number } = {};
+  const isEsp32Online = () =>
+    esp32LastSeen !== null
+    && Date.now() - esp32LastSeen.getTime() < ESP32_ONLINE_THRESHOLD_MS;
+
+  registerIrrigationRoutes(app, ESP32_SECRET, isEsp32Online);
 
   // Status endpoint — frontend polls this to show online/offline badge
   app.get("/api/esp32/status", (req, res) => {
-    const onlineThresholdMs = 5 * 60 * 1000; // 5 minutes
-    const online = esp32LastSeen !== null &&
-      (Date.now() - esp32LastSeen.getTime()) < onlineThresholdMs;
     res.json({
-      online,
+      online: isEsp32Online(),
       lastSeen: esp32LastSeen?.toISOString() ?? null,
       lastData: esp32LastData,
     });

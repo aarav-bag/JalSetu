@@ -45,7 +45,11 @@ async function getCurrentRainChance(lat: number | null, lon: number | null) {
   return rainChance;
 }
 
-export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
+export function registerIrrigationRoutes(
+  app: Express,
+  deviceSecret: string,
+  isDeviceOnline: () => boolean,
+) {
   app.post("/api/irrigation/location", isAuthenticated, asyncHandler(async (req, res) => {
     const schema = z.object({
       lat: z.number().min(-90).max(90),
@@ -143,6 +147,11 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
 
     if (values.mode === "manual" && values.manualOn === undefined) {
       return res.status(400).json({ error: "Manual mode requires manualOn" });
+    }
+    if (values.mode === "manual" && values.manualOn === true && !isDeviceOnline()) {
+      return res.status(503).json({
+        error: "Pump start was not sent because the ESP32 is offline. Reconnect the device and try again.",
+      });
     }
 
     await pool.query(

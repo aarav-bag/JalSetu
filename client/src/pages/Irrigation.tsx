@@ -78,6 +78,11 @@ interface PumpControlResponse {
   pumps: PumpControl[];
 }
 
+interface Esp32Status {
+  online: boolean;
+  lastSeen: string | null;
+}
+
 function statusStyle(status: SoilField["status"]): string {
   if (status === "optimal") {
     return "border-teal-500/25 bg-teal-500/10 text-teal-700 dark:text-teal-200";
@@ -175,11 +180,12 @@ function FieldMoistureCard({ field }: { field: SoilField }) {
 interface PumpControlCardProps {
   pump: PumpControl;
   busy: boolean;
+  deviceOnline: boolean;
   onMode: (pump: PumpControl, mode: "off" | "auto") => Promise<void>;
   onManual: (pump: PumpControl, on: boolean) => Promise<void>;
 }
 
-function PumpControlCard({ pump, busy, onMode, onManual }: PumpControlCardProps) {
+function PumpControlCard({ pump, busy, deviceOnline, onMode, onManual }: PumpControlCardProps) {
   const statusText = pump.actualUpdatedAt
     ? `Device reports ${pump.actualOn ? "ON" : "OFF"}`
     : "Waiting for device status";
@@ -234,9 +240,10 @@ function PumpControlCard({ pump, busy, onMode, onManual }: PumpControlCardProps)
         <button
           type="button"
           onClick={() => void onManual(pump, true)}
-          disabled={busy}
+          disabled={busy || !deviceOnline}
           aria-pressed={pump.mode === "manual" && pump.manualOn}
           aria-describedby={`${controlId}-control-note`}
+          title={!deviceOnline ? "Pump start is unavailable while the ESP32 is offline or its status is unknown." : undefined}
           className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
             pump.mode === "manual" && pump.manualOn
               ? "border-teal-700/30 bg-teal-700 text-white"
@@ -277,7 +284,7 @@ function PumpControlCard({ pump, busy, onMode, onManual }: PumpControlCardProps)
       </button>
 
       <p id={`${controlId}-control-note`} className="mt-3 text-[11px] leading-relaxed card-muted">
-        ON starts a manual run. OFF stops it. AUTO follows the soil and rain rules. Every start is limited to {pump.maxRunSeconds} seconds; the device also turns the pump off if it loses the server.
+        ON starts a manual run when the ESP32 is online. OFF stops it. AUTO follows the soil and rain rules. Every start is limited to {pump.maxRunSeconds} seconds; the device also turns the pump off if it loses the server.
       </p>
     </article>
   );
@@ -351,6 +358,13 @@ const Irrigation = () => {
     refetchInterval: 5000,
     staleTime: 0,
   });
+
+  const esp32StatusQuery = useQuery<Esp32Status>({
+    queryKey: ["/api/esp32/status"],
+    refetchInterval: 5000,
+    staleTime: 0,
+  });
+  const deviceOnline = esp32StatusQuery.data?.online === true;
 
   const updatePumpMutation = useMutation({
     mutationFn: async (input: { fieldId: number; mode: "off" | "manual" | "auto"; manualOn?: boolean }) => {
@@ -650,6 +664,21 @@ const Irrigation = () => {
                 AUTO uses the soil probes: each pump starts below 35% moisture and stops at 60%. Manual ON/OFF overrides AUTO, and every run stops after 5 seconds.
               </p>
             </div>
+            {!deviceOnline && (
+              <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] p-3 text-xs text-amber-900 dark:text-amber-100">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <p>
+                  <strong>
+                    {esp32StatusQuery.isLoading
+                      ? "Checking controller connection."
+                      : esp32StatusQuery.isError
+                        ? "Controller status is unavailable."
+                        : "ESP32 is offline."}
+                  </strong>{" "}
+                  Pump ON is disabled until the controller is confirmed online. OFF remains available to clear a pending command.
+                </p>
+              </div>
+            )}
 
             {pumpQuery.isLoading ? (
               <div className="grid gap-3 sm:grid-cols-2" aria-label="Loading pump controls">
@@ -673,6 +702,7 @@ const Irrigation = () => {
                     key={pump.fieldId}
                     pump={pump}
                     busy={updatePumpMutation.isPending}
+                    deviceOnline={deviceOnline}
                     onMode={setPumpMode}
                     onManual={setManualPump}
                   />

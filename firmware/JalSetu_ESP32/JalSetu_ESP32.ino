@@ -55,8 +55,8 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 // ─── Control pins ─────────────────────────────────────────────
 #define PIN_LED          2    // Onboard LED (GPIO 2)
 #define PIN_RESET_WIFI   0    // BOOT button — hold 3 s to reset WiFi
-#define RELAY1_PIN 26   // Relay 1 IN
-#define RELAY2_PIN 27   // Relay 2 IN
+#define RELAY1_PIN 25   // Relay 1 IN
+#define RELAY2_PIN 26   // Relay 2 IN
 
 // Hardware commissioning has been confirmed by the user.
 // Keep the relay outputs inactive at boot; only server-approved targets can turn them on.
@@ -64,10 +64,12 @@ const char* PUMP_STATUS_URL  = "https://jalsetu-rbeg.onrender.com/api/esp32/pump
 #define PUMP_RELAY_ACTIVE_LOW true
 
 // ─── Soil calibration ─────────────────────────────────────────
+// Temporary endpoints selected from the supplied sketch; recalibrate from
+// observed dry/wet ADC values when physical readings are available.
 #define DRY1_VALUE 4095
-#define WET1_VALUE 1800
-#define DRY2_VALUE 3900
-#define WET2_VALUE 1500
+#define WET1_VALUE 1700
+#define DRY2_VALUE 4095
+#define WET2_VALUE 2100
 
 // ─── Timing ───────────────────────────────────────────────────
 const unsigned long INTERVAL_MS      = 30000;  // 30 s between uploads

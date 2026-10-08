@@ -10,7 +10,6 @@ import { useLocation } from "wouter";
 import { useLanguage } from "@/context/LanguageContext";
 import { useUserLocation } from "@/context/LocationContext";
 import LocationPicker from "@/components/LocationPicker";
-import PumpSafetySettings from "@/components/PumpSafetySettings";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { AnimatePresence } from "framer-motion";
@@ -177,8 +176,6 @@ const Settings = () => {
               {t.editProfile} <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-
-          <PumpSafetySettings />
 
           {/* Settings sections */}
           {settingsSections.map((section, idx) => (

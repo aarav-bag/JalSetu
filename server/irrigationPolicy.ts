@@ -11,14 +11,12 @@ export const IRRIGATION_POLICY = {
 export interface PumpDecisionInput {
   mode: PumpMode;
   manualOn: boolean;
-  safetyReady: boolean;
   actualOn: boolean;
   soilMoisture: number | null;
   soilObservedAt: Date | null;
   rainChance: number | null;
   maxRunSeconds: number;
   actualUpdatedAt: Date | null;
-  manualCommandAt: Date | null;
   cooldownUntil: Date | null;
   now?: Date;
 }
@@ -31,11 +29,11 @@ export interface PumpDecision {
 export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
   const now = input.now ?? new Date();
 
-  if (!input.safetyReady) {
-    return { desiredOn: false, reason: "Pump safety commissioning is incomplete" };
-  }
-
-  if (input.cooldownUntil && input.cooldownUntil.getTime() > now.getTime()) {
+  if (
+    input.mode === "auto"
+    && input.cooldownUntil
+    && input.cooldownUntil.getTime() > now.getTime()
+  ) {
     return { desiredOn: false, reason: "Pump is in its post-run safety cooldown" };
   }
 
@@ -53,14 +51,6 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
   }
 
   if (input.mode === "manual") {
-    if (
-      input.manualOn
-      && !input.actualOn
-      && input.manualCommandAt
-      && now.getTime() - input.manualCommandAt.getTime() > 20_000
-    ) {
-      return { desiredOn: false, reason: "Manual start command expired before the device received it" };
-    }
     return {
       desiredOn: input.manualOn,
       reason: input.manualOn ? "Manual app command" : "Manually stopped in app",
@@ -81,15 +71,7 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
   }
 
   if (input.rainChance >= IRRIGATION_POLICY.highRainChanceAt) {
-<<<<<<< HEAD
-<<<<<<< HEAD
     return { desiredOn: false, reason: "Rain chance is high; automatic irrigation is paused" };
-=======
-    return { desiredOn: false, reason: "Rain chance is high; irrigation skipped" };
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
-=======
-    return { desiredOn: false, reason: "Rain chance is high; automatic irrigation is paused" };
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
   }
 
   if (input.soilMoisture < IRRIGATION_POLICY.soilStartBelow) {
@@ -102,18 +84,8 @@ export function decidePumpTarget(input: PumpDecisionInput): PumpDecision {
 
   return {
     desiredOn: input.actualOn,
-<<<<<<< HEAD
-<<<<<<< HEAD
     reason: input.actualOn
       ? "Maintaining irrigation until the stop threshold"
       : "Soil moisture is between the start and stop thresholds",
-=======
-    reason: input.actualOn ? "Maintaining irrigation until the stop threshold" : "Soil does not need irrigation yet",
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
-=======
-    reason: input.actualOn
-      ? "Maintaining irrigation until the stop threshold"
-      : "Soil moisture is between the start and stop thresholds",
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
   };
 }

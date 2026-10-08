@@ -68,10 +68,6 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     if (!farm) return res.status(404).json({ error: "No farm found for this account" });
     await ensurePumpRows(farm.id);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
     let rainChance: number | null = null;
     try {
       rainChance = await getCurrentRainChance(farm.latitude ?? null, farm.longitude ?? null);
@@ -79,30 +75,14 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
       rainChance = null;
     }
 
-<<<<<<< HEAD
-=======
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
-=======
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
     const { rows } = await pool.query(
       `SELECT f.id AS "fieldId", f.name AS "fieldName",
               c.mode, c.manual_on AS "manualOn",
-              c.power_verified AS "powerVerified",
-              c.relay_verified AS "relayVerified",
-              c.low_water_verified AS "lowWaterVerified",
-              c.max_run_seconds AS "maxRunSeconds",
-              c.firmware_enabled AS "firmwareEnabled",
               c.actual_on AS "actualOn",
               c.actual_updated_at AS "actualUpdatedAt",
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
-              c.updated_at AS "manualCommandAt",
               c.cooldown_until AS "cooldownUntil",
               sm.moisture_level AS "soilMoisture",
               sm.created_at AS "soilObservedAt"
-<<<<<<< HEAD
        FROM fields f
        JOIN irrigation_pump_controls c ON c.field_id = f.id
        LEFT JOIN LATERAL (
@@ -112,22 +92,6 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
          ORDER BY created_at DESC
          LIMIT 1
        ) sm ON TRUE
-=======
-              c.updated_at AS "updatedAt"
-       FROM fields f
-       JOIN irrigation_pump_controls c ON c.field_id = f.id
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
-=======
-       FROM fields f
-       JOIN irrigation_pump_controls c ON c.field_id = f.id
-       LEFT JOIN LATERAL (
-         SELECT moisture_level, created_at
-         FROM soil_moistures
-         WHERE field_id = f.id
-         ORDER BY created_at DESC
-         LIMIT 1
-       ) sm ON TRUE
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
        WHERE f.farm_id = $1
        ORDER BY f.id`,
       [farm.id],
@@ -136,90 +100,30 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     res.json({
       farmId: farm.id,
       locationConfigured: farm.latitude !== null && farm.longitude !== null,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
       pumps: rows.map((row) => {
-        const maxRunSeconds = IRRIGATION_POLICY.maxRunSeconds;
-        const safetyReady = Boolean(
-          row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled,
-        );
         const soilMoisture = row.soilMoisture === null ? null : Number(row.soilMoisture);
         const decision = decidePumpTarget({
           mode: row.mode,
           manualOn: row.manualOn,
-          safetyReady,
           actualOn: row.actualOn,
           soilMoisture,
           soilObservedAt: row.soilObservedAt ? new Date(row.soilObservedAt) : null,
           rainChance,
-          maxRunSeconds,
+          maxRunSeconds: IRRIGATION_POLICY.maxRunSeconds,
           actualUpdatedAt: row.actualUpdatedAt ? new Date(row.actualUpdatedAt) : null,
-          manualCommandAt: row.manualCommandAt ? new Date(row.manualCommandAt) : null,
           cooldownUntil: row.cooldownUntil ? new Date(row.cooldownUntil) : null,
         });
 
         return {
           ...row,
-          maxRunSeconds,
+          maxRunSeconds: IRRIGATION_POLICY.maxRunSeconds,
           soilMoisture,
           rainChance,
           desiredOn: decision.desiredOn,
           decisionReason: decision.reason,
-          safetyReady,
         };
       }),
-<<<<<<< HEAD
-=======
-      pumps: rows.map((row) => ({
-        ...row,
-        safetyReady: Boolean(row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled),
-      })),
->>>>>>> d6ac647 (Update irrigation page and handoff documentation)
-=======
->>>>>>> ffd0e6d (Implement irrigation system logic and update project documentation)
     });
-  }));
-
-  app.put("/api/irrigation/pumps/:fieldId/commissioning", isAuthenticated, asyncHandler(async (req, res) => {
-    const schema = z.object({
-      powerVerified: z.boolean(),
-      relayVerified: z.boolean(),
-      lowWaterVerified: z.boolean(),
-      maxRunSeconds: z.number().int().min(5).max(IRRIGATION_POLICY.maxRunSeconds),
-    });
-    const values = schema.parse(req.body);
-    const userId = Number((req.user as any).id);
-    const farm = await getOwnedFarm(userId);
-    if (!farm) return res.status(404).json({ error: "No farm found for this account" });
-
-    const fieldId = Number(req.params.fieldId);
-    const field = await storage.getField(fieldId);
-    if (!field || field.farmId !== farm.id) return res.status(404).json({ error: "Field not found" });
-
-    const commissioned = values.powerVerified && values.relayVerified && values.lowWaterVerified;
-    await pool.query(
-      `INSERT INTO irrigation_pump_controls
-         (field_id, farm_id, power_verified, relay_verified, low_water_verified, max_run_seconds,
-          mode, manual_on, actual_on)
-       VALUES ($1, $2, $3, $4, $5, $6, 'off', FALSE, FALSE)
-       ON CONFLICT (field_id) DO UPDATE SET
-         power_verified = EXCLUDED.power_verified,
-         relay_verified = EXCLUDED.relay_verified,
-         low_water_verified = EXCLUDED.low_water_verified,
-         max_run_seconds = EXCLUDED.max_run_seconds,
-         mode = CASE WHEN $7 THEN irrigation_pump_controls.mode ELSE 'off' END,
-         manual_on = CASE WHEN $7 THEN irrigation_pump_controls.manual_on ELSE FALSE END,
-         actual_on = CASE WHEN $7 THEN irrigation_pump_controls.actual_on ELSE FALSE END,
-         updated_at = NOW()`,
-      [
-        fieldId, farm.id, values.powerVerified, values.relayVerified, values.lowWaterVerified,
-        values.maxRunSeconds, commissioned,
-      ],
-    );
-
-    res.json({ commissioned });
   }));
 
   app.patch("/api/irrigation/pumps/:fieldId", isAuthenticated, asyncHandler(async (req, res) => {
@@ -237,22 +141,6 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     if (!field || field.farmId !== farm.id) return res.status(404).json({ error: "Field not found" });
     await ensurePumpRows(farm.id);
 
-    const { rows: safetyRows } = await pool.query(
-      `SELECT power_verified, relay_verified, low_water_verified, firmware_enabled
-       FROM irrigation_pump_controls WHERE field_id = $1 AND farm_id = $2`,
-      [fieldId, farm.id],
-    );
-    const safety = safetyRows[0];
-    const safetyReady = Boolean(
-      safety?.power_verified && safety?.relay_verified && safety?.low_water_verified && safety?.firmware_enabled,
-    );
-    const requestedOn = values.mode === "manual" && values.manualOn === true;
-    if (requestedOn && !safetyReady) {
-      return res.status(423).json({ error: "Pump is locked until power, relay, low-water, and firmware checks pass" });
-    }
-    if (values.mode === "auto" && !safetyReady) {
-      return res.status(423).json({ error: "Automatic irrigation is locked until pump safety commissioning is complete" });
-    }
     if (values.mode === "auto" && (farm.latitude === null || farm.longitude === null)) {
       return res.status(409).json({ error: "Set the farm location before enabling rain-aware automatic irrigation" });
     }
@@ -291,14 +179,8 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
 
     const { rows } = await pool.query(
       `SELECT f.id AS "fieldId", c.mode, c.manual_on AS "manualOn",
-              c.power_verified AS "powerVerified",
-              c.relay_verified AS "relayVerified",
-              c.low_water_verified AS "lowWaterVerified",
-              c.firmware_enabled AS "firmwareEnabled",
-              c.max_run_seconds AS "maxRunSeconds",
               c.actual_on AS "actualOn",
               c.actual_updated_at AS "actualUpdatedAt",
-              c.updated_at AS "manualCommandAt",
               c.cooldown_until AS "cooldownUntil",
               sm.moisture_level AS "soilMoisture",
               sm.created_at AS "soilObservedAt"
@@ -317,28 +199,22 @@ export function registerIrrigationRoutes(app: Express, deviceSecret: string) {
     );
 
     const targets = rows.map((row, index: number) => {
-      const maxRunSeconds = IRRIGATION_POLICY.maxRunSeconds;
-      const safetyReady = Boolean(
-        row.powerVerified && row.relayVerified && row.lowWaterVerified && row.firmwareEnabled,
-      );
       const decision = decidePumpTarget({
         mode: row.mode,
         manualOn: row.manualOn,
-        safetyReady,
         actualOn: row.actualOn,
         soilMoisture: row.soilMoisture === null ? null : Number(row.soilMoisture),
         soilObservedAt: row.soilObservedAt ? new Date(row.soilObservedAt) : null,
         rainChance,
-        maxRunSeconds,
+        maxRunSeconds: IRRIGATION_POLICY.maxRunSeconds,
         actualUpdatedAt: row.actualUpdatedAt ? new Date(row.actualUpdatedAt) : null,
-        manualCommandAt: row.manualCommandAt ? new Date(row.manualCommandAt) : null,
         cooldownUntil: row.cooldownUntil ? new Date(row.cooldownUntil) : null,
       });
       return {
         fieldIndex: index + 1,
         desiredOn: decision.desiredOn,
         reason: decision.reason,
-        maxRunSeconds,
+        maxRunSeconds: IRRIGATION_POLICY.maxRunSeconds,
         mode: row.mode as string,
         rainChance,
       };

@@ -4,7 +4,7 @@
 
 This is a technical and product handoff for the JalSetu project. It is written so another AI coding assistant can understand the project before making changes.
 
-This document describes the current implementation, not only the planned future system. The prototype has two-field app controls and authenticated ESP32 command polling. Relay outputs are enabled in the current firmware, initialize OFF, and only follow server-approved targets after each field passes its safety checks. Automatic valves, MQTT, and production-ready irrigation automation are not implemented.
+This document describes the current implementation, not only the planned future system. The prototype has two-field app controls and authenticated ESP32 command polling. Relay outputs are enabled in the current firmware, initialize OFF, and only follow server-approved targets. Manual controls no longer require app commissioning checkboxes; the server and ESP32 retain the five-second run limit, the ESP32 shuts off on server loss, and automatic control fails closed for missing or stale inputs. Automatic valves, MQTT, and production-ready irrigation automation are not implemented.
 
 Do not copy or expose credentials while working on this project. The repository contains environment-variable references and the firmware currently contains a device authentication value; those values should be treated as secrets and rotated/moved to secure provisioning before production use.
 
@@ -545,7 +545,6 @@ GET  /api/esp32/pump-targets
 POST /api/esp32/pump-status
 POST /api/irrigation/location
 GET  /api/irrigation/pumps
-PUT  /api/irrigation/pumps/:fieldId/commissioning
 PATCH /api/irrigation/pumps/:fieldId
 ```
 
@@ -791,7 +790,7 @@ Every 30 seconds:
 
 Both field uploads currently carry the same generated demo TDS and pH readings, while soil moisture differs by field. No water-level value is sent.
 
-The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs are compile-time enabled after the user confirmed the hardware commissioning checks; outputs initialize OFF and only authenticated server targets can start a pump. Keep the per-field app commissioning checks and run-time limits in place. The current controller does not:
+The firmware now polls JalSetu for per-field pump targets every five seconds and reports relay state. Relay outputs are compile-time enabled and initialize OFF; only authenticated server targets can start a pump. Manual commands do not require app commissioning checkboxes. The five-second per-start cap remains in both server policy and firmware, and firmware turns pumps off if server contact is lost. Automatic mode still blocks starts on missing/stale soil readings or unavailable/high-rain forecasts. The current controller does not:
 
 - Control a valve
 - Read calibrated tank level or flow
@@ -1146,7 +1145,7 @@ This section is critical for another AI so it does not incorrectly claim the pro
 
 ### Product limitations
 
-JalSetu is not yet a complete irrigation automation controller. The prototype can send manual or rain-aware pump targets after commissioning. Firmware outputs initialize OFF and only change on approved server targets; the arm switch is currently enabled. The system has no flow sensing or production-grade actuator safeguards.
+JalSetu is not yet a complete irrigation automation controller. The prototype can send manual or rain-aware pump targets without an app commissioning checklist. Firmware outputs initialize OFF and only change on approved server targets; the arm switch is currently enabled. The server and firmware keep a five-second maximum per start, and firmware stops the pumps if the server connection is lost. The system has no flow sensing or production-grade actuator safeguards.
 
 ---
 
@@ -1303,7 +1302,7 @@ When testing sensor features:
 ## 19. Fast context summary for an AI prompt
 
 ```text
-JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The school-demo firmware generates gradual TDS values from 200–500 ppm and pH values from 7.0–7.4 in 0.1 steps; the teacher knows and the presentation poster discloses this. App and serial output have no source tag. Soil probes use GPIO 32/33, average 10 ADC samples, and convert with Field 1 dry/wet endpoints 4095/1800 and Field 2 endpoints 3900/1500. Active-low relay inputs are GPIO 26/27. No water-level sensor is in the current firmware. The app supports separate manual pump commands and automatic targets: start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; stop at or above 60%, pause for high rain, and fail closed for stale/missing readings or incomplete safety checks. Every run is capped at five seconds by server policy and firmware. Manual mode turns off at the cap; automatic mode retains its 10-minute post-run cooldown. Preserve the app/server as the only pump-target authority; do not add a local soil-only pump loop that bypasses rain checks or app control. Retain per-field power/relay/low-water checks, `PUMP_OUTPUTS_ARMED`, and inactive outputs at boot. Use regulated 5V for the labeled pumps, never a 9V battery directly. Preserve farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
+JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript backend, PostgreSQL/Drizzle storage, and ESP32 firmware. The school-demo firmware generates gradual TDS values from 200–500 ppm and pH values from 7.0–7.4 in 0.1 steps; the teacher knows and the presentation poster discloses this. App and serial output have no source tag. Soil probes use GPIO 32/33, average 10 ADC samples, and convert with Field 1 dry/wet endpoints 4095/1800 and Field 2 endpoints 3900/1500. Active-low relay inputs are GPIO 26/27. No water-level sensor is in the current firmware. The app supports per-field ON/OFF and AUTO pump controls. Automatic targets start below 35% soil moisture only when today's Open-Meteo rain probability is below 50%; they stop at or above 60%, pause for high rain, and fail closed for stale/missing readings or unavailable rain forecasts. Every run is capped at five seconds by server policy and firmware. Manual mode turns off at the cap; automatic mode retains its 10-minute post-run cooldown. Firmware also stops pumps when server contact is lost. Preserve the app/server as the only pump-target authority; do not add a local soil-only pump loop that bypasses rain checks or app control. App commissioning checkboxes are no longer used. `PUMP_OUTPUTS_ARMED` and inactive outputs at boot remain in firmware. Use regulated 5V for the labeled pumps, never a 9V battery directly. Preserve farm ownership checks, null-versus-zero sensor semantics, and never expose secrets.
 ```
 
 ### Recent decisions and implementation status
@@ -1311,9 +1310,9 @@ JalSetu is a React 18 + TypeScript + Vite frontend with an Express + TypeScript 
 - The school demo uses generated TDS/pH because physical probes are currently unavailable. The app and serial output show plain values; the poster is the disclosure. Keep demo mode easy to disable when calibrated probes are added.
 - The latest firmware pin map follows the attached sketch: soil probes on GPIO 32 and 33, Field 1/2 relays on GPIO 26 and 27, active-low relay inputs. Confirm actual `IN` wiring matches before flashing; the previous firmware pin map differed.
 - Soil values are averaged across 10 ADC samples and reported with raw values and percentages. Current dry/wet calibration endpoints are 4095/1800 for Field 1 and 3900/1500 for Field 2; recalibrate against the actual probes if their readings do not match.
-- The attached standalone 5-second soil-to-relay loop was not copied. Pump starts remain controlled by the app/server so manual control, rain probability, commissioning checks, and soil thresholds continue to apply.
-- Maximum pump run is now five seconds per start in firmware, server policy, and Settings. On expiry, manual mode turns off; automatic mode keeps its existing 10-minute cooldown. Other pump protections remain enabled.
-- `npm run build` passed and the server policy was checked at 4,999 ms and 5,000 ms. Arduino CLI/PlatformIO was unavailable, so the firmware was not compiled or flashed. The Render deployment was not updated.
+- The attached standalone 5-second soil-to-relay loop was not copied. Pump starts remain controlled by the app/server so manual control, rain probability, and soil thresholds continue to apply.
+- The app's separate ON/OFF/AUTO controls no longer require a commissioning checklist. Maximum pump run remains five seconds per start in firmware and server policy; manual mode turns off at the cap, and automatic mode keeps its 10-minute post-run cooldown. Firmware still turns pumps off if server contact is lost.
+- `npm run build` passes for the current code. `npm run check` still reports existing TypeScript errors in alert Set iteration, Google OAuth typings, and the Vite `allowedHosts` type; none are in the irrigation files. The firmware was not compiled or flashed, and the Render deployment was not updated.
 
 ---
 

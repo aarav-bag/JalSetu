@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  Check,
   Cloud,
   CloudRain,
   CloudSun,
@@ -10,9 +9,9 @@ import {
   Gauge,
   Info,
   MapPin,
+  Power,
+  PowerOff,
   RefreshCw,
-  Settings as SettingsIcon,
-  ShieldCheck,
   Sprout,
   Sun,
   Waves,
@@ -23,7 +22,6 @@ import PageShell from "@/components/PageShell";
 import { useUserLocation } from "@/context/LocationContext";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation as useRouterLocation } from "wouter";
 
 interface SoilField {
   id: number;
@@ -65,18 +63,13 @@ interface PumpControl {
   fieldName: string;
   mode: "off" | "manual" | "auto";
   manualOn: boolean;
-  powerVerified: boolean;
-  relayVerified: boolean;
-  lowWaterVerified: boolean;
   maxRunSeconds: number;
-  firmwareEnabled: boolean;
   actualOn: boolean;
   actualUpdatedAt: string | null;
   soilMoisture: number | null;
   rainChance: number | null;
   desiredOn: boolean;
   decisionReason: string;
-  safetyReady: boolean;
 }
 
 interface PumpControlResponse {
@@ -84,14 +77,6 @@ interface PumpControlResponse {
   locationConfigured: boolean;
   pumps: PumpControl[];
 }
-
-const safetyRequirements = [
-  "Verified GPIO pin and relay polarity",
-  "Pump power wiring checked for the installed load",
-  "Calibrated low-water cutoff",
-  "Independent low-water protection",
-  "Safe maximum run-time limit",
-];
 
 function statusStyle(status: SoilField["status"]): string {
   if (status === "optimal") {
@@ -196,14 +181,8 @@ interface PumpControlCardProps {
 
 function PumpControlCard({ pump, busy, onMode, onManual }: PumpControlCardProps) {
   const statusText = pump.actualUpdatedAt
-    ? `${pump.actualOn ? "ON" : "OFF"} · device reported`
-    : "Waiting for ESP32 status";
-  const checksConfirmed = pump.powerVerified && pump.relayVerified && pump.lowWaterVerified;
-  const safetyStatus = pump.safetyReady
-    ? statusText
-    : checksConfirmed
-      ? "Waiting for ESP32"
-      : "Safety locked";
+    ? `Device reports ${pump.actualOn ? "ON" : "OFF"}`
+    : "Waiting for device status";
   const controlId = `pump-${pump.fieldId}`;
 
   return (
@@ -219,11 +198,11 @@ function PumpControlCard({ pump, busy, onMode, onManual }: PumpControlCardProps)
           </div>
         </div>
         <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-          pump.safetyReady
+          pump.actualOn
             ? "border-teal-500/25 bg-teal-500/10 text-teal-700 dark:text-teal-200"
-            : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-200"
+            : "border-slate-400/25 bg-slate-400/10 text-slate-700 dark:text-slate-200"
         }`}>
-          {safetyStatus}
+          {statusText}
         </span>
       </div>
 
@@ -231,11 +210,6 @@ function PumpControlCard({ pump, busy, onMode, onManual }: PumpControlCardProps)
         Mode: <span className="font-semibold capitalize">{pump.mode}</span>
         {" · "}Maximum run: <span className="font-semibold">{pump.maxRunSeconds}s</span>
       </p>
-      {!pump.safetyReady && (
-        <p className="mt-2 text-xs leading-relaxed text-amber-800 dark:text-amber-200">
-          Safety setup is incomplete. Complete this pump’s setup in Settings to unlock manual and automatic controls.
-        </p>
-      )}
       <div className="mt-3 rounded-xl border border-cyan-700/15 bg-cyan-700/[0.04] p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -260,52 +234,56 @@ function PumpControlCard({ pump, busy, onMode, onManual }: PumpControlCardProps)
         <button
           type="button"
           onClick={() => void onManual(pump, true)}
-          disabled={busy || !pump.safetyReady}
-          aria-describedby={`${controlId}-control-note`}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-700/20 bg-teal-700/[0.06] px-3 text-xs font-bold text-teal-900 transition-colors hover:bg-teal-700/10 disabled:cursor-not-allowed disabled:opacity-45 dark:text-teal-100"
-        >
-          <Check className="h-3.5 w-3.5" aria-hidden="true" />
-          Manual on
-        </button>
-        <button
-          type="button"
-          onClick={() => void onManual(pump, false)}
           disabled={busy}
+          aria-pressed={pump.mode === "manual" && pump.manualOn}
           aria-describedby={`${controlId}-control-note`}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-400/25 bg-slate-400/[0.07] px-3 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-400/15 disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-200"
+          className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+            pump.mode === "manual" && pump.manualOn
+              ? "border-teal-700/30 bg-teal-700 text-white"
+              : "border-teal-700/20 bg-teal-700/[0.06] text-teal-900 hover:bg-teal-700/10 dark:text-teal-100"
+          }`}
         >
-          <Waves className="h-3.5 w-3.5" aria-hidden="true" />
-          Stop
-        </button>
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => void onMode(pump, "auto")}
-          disabled={busy || !pump.safetyReady}
-          className="min-h-10 rounded-xl border border-cyan-700/20 bg-cyan-700/[0.06] px-3 text-xs font-bold text-cyan-900 transition-colors hover:bg-cyan-700/10 disabled:cursor-not-allowed disabled:opacity-45 dark:text-cyan-100"
-        >
-          Automatic
+          <Power className="h-3.5 w-3.5" aria-hidden="true" />
+          ON
         </button>
         <button
           type="button"
           onClick={() => void onMode(pump, "off")}
           disabled={busy}
-          className="min-h-10 rounded-xl border border-slate-400/25 px-3 text-xs font-bold card-body transition-colors hover:bg-slate-400/10 disabled:cursor-not-allowed disabled:opacity-45"
+          aria-pressed={pump.mode === "off"}
+          aria-describedby={`${controlId}-control-note`}
+          className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+            pump.mode === "off"
+              ? "border-slate-500/35 bg-slate-500 text-white"
+              : "border-slate-400/25 bg-slate-400/[0.07] text-slate-700 hover:bg-slate-400/15 dark:text-slate-200"
+          }`}
         >
-          Disable mode
+          <PowerOff className="h-3.5 w-3.5" aria-hidden="true" />
+          OFF
         </button>
       </div>
+      <button
+        type="button"
+        onClick={() => void onMode(pump, "auto")}
+        disabled={busy}
+        aria-pressed={pump.mode === "auto"}
+        className={`mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border px-3 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+          pump.mode === "auto"
+            ? "border-cyan-700/30 bg-cyan-700 text-white"
+            : "border-cyan-700/20 bg-cyan-700/[0.06] text-cyan-900 hover:bg-cyan-700/10 dark:text-cyan-100"
+        }`}
+      >
+        AUTO · Soil and rain based
+      </button>
 
       <p id={`${controlId}-control-note`} className="mt-3 text-[11px] leading-relaxed card-muted">
-        Manual control still uses the device maximum-run timer and low-water protection.
+        ON starts a manual run. OFF stops it. AUTO follows the soil and rain rules. Every start is limited to {pump.maxRunSeconds} seconds; the device also turns the pump off if it loses the server.
       </p>
     </article>
   );
 }
 
 const Irrigation = () => {
-  const [, navigate] = useRouterLocation();
   const { location, isSet } = useUserLocation();
   const configuredLocation = isSet ? location : null;
   const [showLocationPicker, setShowLocationPicker] = useState(!isSet);
@@ -393,10 +371,6 @@ const Irrigation = () => {
 
   const fields = farmData?.soilMoisture?.fields ?? [];
   const pumps = pumpQuery.data?.pumps ?? [];
-  const allPumpsSafetyReady = pumps.length > 0 && pumps.every((pump) => pump.safetyReady);
-  const allPumpChecksConfirmed = pumps.length > 0 && pumps.every((pump) =>
-    pump.powerVerified && pump.relayVerified && pump.lowWaterVerified
-  );
   const reportingCount = fields.filter((field) =>
     field.hasReading === true && typeof field.value === "number" && Number.isFinite(field.value)
   ).length;
@@ -411,7 +385,7 @@ const Irrigation = () => {
               <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-teal-800 dark:text-teal-200">JalSetu · Field systems</span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight page-title sm:text-4xl">Irrigation</h1>
-            <p className="mt-1 max-w-md text-sm page-subtitle">Soil readings, weather outlook, and pump safety in one place.</p>
+            <p className="mt-1 max-w-md text-sm page-subtitle">Soil readings, weather outlook, and simple pump controls.</p>
           </div>
           <div className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-teal-500/20 bg-teal-500/10 shadow-sm">
             <Droplet className="h-6 w-6 text-teal-700 dark:text-teal-300" aria-hidden="true" />
@@ -637,7 +611,7 @@ const Irrigation = () => {
             <div className="mb-3 px-1">
               <h2 id="pump-title" className="text-base font-bold card-heading">Pump controls</h2>
               <p className="mt-0.5 text-xs card-muted">
-                Automatic starts below 35% soil moisture only when rain chance is below 50%; it stops at 60% moisture or high rain. Safety checks and run-time limits are saved in Settings.
+                Choose ON or OFF for manual control, or AUTO to use soil moisture and rain. Automatic irrigation starts below 35% soil moisture when rain chance is below 50%, and stops at 60% moisture or high rain.
               </p>
             </div>
 
@@ -675,89 +649,6 @@ const Irrigation = () => {
               </div>
             )}
 
-            {allPumpChecksConfirmed ? (
-              <div
-                className={`mt-3 flex items-center justify-between gap-3 rounded-2xl border p-3 sm:p-4 ${
-                  allPumpsSafetyReady
-                    ? "border-teal-600/20 bg-teal-600/[0.06]"
-                    : "border-amber-500/25 bg-amber-500/[0.07]"
-                }`}
-                role="status"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
-                    allPumpsSafetyReady
-                      ? "border-teal-600/20 bg-teal-600/10"
-                      : "border-amber-500/20 bg-amber-500/10"
-                  }`}>
-                    <ShieldCheck
-                      className={`h-5 w-5 ${
-                        allPumpsSafetyReady
-                          ? "text-teal-700 dark:text-teal-200"
-                          : "text-amber-700 dark:text-amber-200"
-                      }`}
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-sm font-bold ${
-                      allPumpsSafetyReady
-                        ? "text-teal-950 dark:text-teal-100"
-                        : "text-amber-950 dark:text-amber-100"
-                    }`}>
-                      {allPumpsSafetyReady ? "Safety confirmed" : "Safety checks saved"}
-                    </p>
-                    <p className={`text-xs ${
-                      allPumpsSafetyReady
-                        ? "text-teal-900/75 dark:text-teal-100/70"
-                        : "text-amber-900/80 dark:text-amber-100/70"
-                    }`}>
-                      {allPumpsSafetyReady
-                        ? "Edit checks and run time in Settings."
-                        : "Waiting for ESP32 outputs. Edit settings anytime."}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate("/settings")}
-                  className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-teal-700/20 bg-white/40 px-3 text-xs font-bold text-teal-900 transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:bg-black/10 dark:text-teal-100 dark:hover:bg-black/20"
-                >
-                  <SettingsIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                  Settings
-                </button>
-              </div>
-            ) : (
-              <div className="mt-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-4 sm:p-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
-                    <ShieldCheck className="h-5 w-5 text-amber-700 dark:text-amber-200" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-amber-950 dark:text-amber-100">Safety commissioning required</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/70">
-                      The ESP32 must report its relay outputs enabled. Missing or stale sensor/weather data blocks automatic starts; each run is limited by its saved maximum duration.
-                    </p>
-                  </div>
-                </div>
-                <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {safetyRequirements.map((requirement) => (
-                    <li key={requirement} className="flex items-start gap-2 text-xs leading-relaxed text-amber-950/85 dark:text-amber-100/80">
-                      <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600 dark:bg-amber-300" />
-                      {requirement}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => navigate("/settings")}
-                  className="mt-4 min-h-10 rounded-xl border border-amber-700/20 bg-white/50 px-4 text-xs font-bold text-amber-950 transition-colors hover:bg-white/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:bg-black/10 dark:text-amber-100 dark:hover:bg-black/20"
-                >
-                  Configure safety in Settings
-                </button>
-              </div>
-            )}
-
             <details className="glass-tile mt-3 rounded-2xl p-4 sm:p-5">
               <summary className="cursor-pointer text-sm font-bold card-heading">
                 Two-pump relay wiring tutorial
@@ -784,15 +675,13 @@ const Irrigation = () => {
                 <p>
                   Size the 5V supply and each fuse for the pump’s startup current. Use the terminal
                   labels printed on the relay board. Relay VCC is a separate 5V control connection;
-                  never connect the 9V battery to VCC or an ESP32 GPIO. The relay input pins and
-                  pump controls stay disabled until the ESP32 pin mapping, trigger polarity, and
-                  low-water/run-time safeguards are verified.
+                  never connect the 9V battery to VCC or an ESP32 GPIO.
                 </p>
                 <p>
-                  The firmware uses GPIO 25 for Field 1 and GPIO 26 for Field 2 relay inputs, with
+                  The firmware uses GPIO 26 for Field 1 and GPIO 27 for Field 2 relay inputs, with
                   active-low relay control. Outputs initialize OFF and only follow authenticated
-                  server targets. Settings safety checks gate app commands; the ESP32 also enforces
-                  its run-time limit and turns pumps off if it loses contact with the server.
+                  server targets. The ESP32 keeps a 5-second maximum per start and turns pumps off
+                  if it loses contact with the server.
                 </p>
               </div>
             </details>

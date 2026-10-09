@@ -50,6 +50,22 @@ export function registerIrrigationRoutes(
   deviceSecret: string,
   isDeviceOnline: () => boolean,
 ) {
+  const PUMP_STATUS_FRESH_MS = 15_000;
+  let pumpStatusLastSeen: Date | null = null;
+  let pumpFirmwareEnabled: boolean | null = null;
+  const isPumpControllerOnline = () =>
+    pumpStatusLastSeen !== null
+    && Date.now() - pumpStatusLastSeen.getTime() < PUMP_STATUS_FRESH_MS
+    && pumpFirmwareEnabled === true;
+
+  app.get("/api/esp32/pump-control-status", (_req, res) => {
+    res.json({
+      online: isPumpControllerOnline(),
+      lastSeen: pumpStatusLastSeen?.toISOString() ?? null,
+      firmwareEnabled: pumpFirmwareEnabled,
+    });
+  });
+
   app.post("/api/irrigation/location", isAuthenticated, asyncHandler(async (req, res) => {
     const schema = z.object({
       lat: z.number().min(-90).max(90),
@@ -151,6 +167,11 @@ export function registerIrrigationRoutes(
     if (values.mode === "manual" && values.manualOn === true && !isDeviceOnline()) {
       return res.status(503).json({
         error: "Pump start was not sent because the ESP32 is offline. Reconnect the device and try again.",
+      });
+    }
+    if (values.mode === "manual" && values.manualOn === true && !isPumpControllerOnline()) {
+      return res.status(503).json({
+        error: "Pump start was not sent because the ESP32 has not confirmed active pump-control firmware. Check the device firmware and pump connection.",
       });
     }
 
@@ -256,6 +277,8 @@ export function registerIrrigationRoutes(
         [data.firmwareEnabled, state.actualOn, state.runtimeExpired === true, field.id, farm.id],
       );
     }
+    pumpStatusLastSeen = new Date();
+    pumpFirmwareEnabled = data.firmwareEnabled;
     res.json({ saved: true });
   }));
 }
